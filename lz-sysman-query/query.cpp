@@ -116,41 +116,31 @@ int main() {
     }
   }
 
-  // Core Temperature
+  // GPU utilization
   {
-    uint32_t sensor_count = 0;
-    status = zesDeviceEnumTemperatureSensors(
-        device, &sensor_count, nullptr);
+    uint32_t engine_count = 0;
+    status = zesDeviceEnumEngineGroups(device, &engine_count, nullptr);
+    assert(status == ZE_RESULT_SUCCESS);
+    printf("status = %d, engine_count = %d\n", status, engine_count); 
 
-    if (status == ZE_RESULT_SUCCESS && sensor_count > 0) {
-#ifdef __linux__
-      if (geteuid() != 0) {
-        std::cout << "Need to be root to see temperature" << std::endl;
-        return 0;
-      }
-#endif
-      std::cout << "-- Temperature Sensors: " << sensor_count << std::endl;
+    std::vector<zes_engine_handle_t> engines(engine_count);
+    status = zesDeviceEnumEngineGroups(device, &engine_count, engines.data());
+    assert(status == ZE_RESULT_SUCCESS);
 
-      std::vector<zes_temp_handle_t> sensor_list(sensor_count);
-      status = zesDeviceEnumTemperatureSensors(
-          device, &sensor_count, sensor_list.data());
-      assert(status == ZE_RESULT_SUCCESS);
-
-      for (uint32_t i = 0; i < sensor_count; ++i) {
-        zes_temp_properties_t temp_props{
-            ZES_STRUCTURE_TYPE_TEMP_PROPERTIES, };
-        status = zesTemperatureGetProperties(sensor_list[i], &temp_props);
+    for (auto& engine : engines) {
+        zes_engine_properties_t props = {};
+        props.stype = ZES_STRUCTURE_TYPE_ENGINE_PROPERTIES;
+        props.pNext = nullptr;
+        status = zesEngineGetProperties(engine, &props);
         assert(status == ZE_RESULT_SUCCESS);
 
-        if (temp_props.type == ZES_TEMP_SENSORS_GPU) {
-          double temperature = 0.0f;
-          status = zesTemperatureGetState(sensor_list[i], &temperature);
-          assert(status == ZE_RESULT_SUCCESS);
-          std::cout << "---- [" << i << "] Core Temperature (C): " <<
-            temperature << std::endl;
+        if (props.type == ZES_ENGINE_GROUP_ALL) {
+            zes_engine_stats_t snap = {};
+            status = zesEngineGetActivity(engine, &snap);
+            assert(status == ZE_RESULT_SUCCESS);
+            printf("INFO: activeTime = %lld, timestamp = %lld\n", snap.activeTime, snap.timestamp);
         }
-      }
-    }
+    }  
   }
 
   return 0;
