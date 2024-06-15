@@ -238,3 +238,83 @@ void queryP2P(ze_device_handle_t dev0, ze_device_handle_t dev1)
 
     printf("%s, dev0 = %p, dev1 = %p, flags = %d\n", __FUNCTION__, dev0, dev1, p2pProperties.flags);
 }
+
+int lzContext::initKernel()
+{
+    ze_result_t result; 
+    FILE *fp = nullptr;
+    size_t nsize = 0;
+    fp = fopen(kernelSpvFile, "rb");
+    if (fp) {
+        fseek(fp, 0, SEEK_END);
+        nsize = (size_t)ftell(fp);
+        fseek(fp, 0, SEEK_SET);
+
+        kernelSpvBin.resize(nsize + 1);
+        memset(kernelSpvBin.data(), 0, kernelSpvBin.size());
+        fread(kernelSpvBin.data(), sizeof(unsigned char), nsize, fp);
+
+        fclose(fp);
+    } else {
+        printf("ERROR: cannot open kernel spv file %\n", kernelSpvFile);
+        exit(1);
+    }
+
+    // Create module
+    ze_module_desc_t module_desc = {};
+    module_desc.stype = ZE_STRUCTURE_TYPE_MODULE_DESC;
+    module_desc.pNext = nullptr;
+    module_desc.format = ZE_MODULE_FORMAT_IL_SPIRV;
+    module_desc.inputSize = static_cast<uint32_t>(kernelSpvBin.size());
+    module_desc.pInputModule = reinterpret_cast<const uint8_t *>(kernelSpvBin.data());
+    module_desc.pBuildFlags = nullptr;
+    result = zeModuleCreate(context, pDevice, &module_desc, &module, nullptr);
+    CHECK_ZE_STATUS(result, "zeModuleCreate");
+
+    // Create kernel
+    ze_kernel_desc_t function_desc = {};
+    function_desc.stype = ZE_STRUCTURE_TYPE_KERNEL_DESC;
+    function_desc.pNext = nullptr;
+    function_desc.flags = 0;
+    function_desc.pKernelName = kernelFuncName;
+    result = zeKernelCreate(module, &function_desc, &function);
+    CHECK_ZE_STATUS(result, "zeKernelCreate");
+
+    return 0;
+}
+
+void lzContext::runKernel(char *spvFile, char *funcName, void* remoteBuf)
+{
+    ze_result_t result; 
+
+    kernelSpvFile = spvFile;
+    kernelFuncName = funcName;
+
+    initKernel();
+
+    // set kernel arguments
+    result = zeKernelSetArgumentValue(function, 0, sizeof(devBuf), &devBuf);
+    CHECK_ZE_STATUS(result, "zeKernelSetArgumentValue");
+    
+    result = zeKernelSetArgumentValue(function, 1, sizeof(remoteBuf), &remoteBuf);
+    CHECK_ZE_STATUS(result, "zeKernelSetArgumentValue");
+
+    ze_group_count_t groupCount = { elemCount, 1, 1 };
+    result = zeCommandListAppendLaunchKernel(command_list, function, &groupCount, nullptr, 0, nullptr);
+    CHECK_ZE_STATUS(result, "zeCommandListAppendLaunchKernel");
+
+    result = zeCommandListAppendBarrier(command_list, nullptr, 0, nullptr);
+    CHECK_ZE_STATUS(result, "zeCommandListAppendBarrier");
+
+    result = zeCommandListClose(command_list);
+    CHECK_ZE_STATUS(result, "zeCommandListClose");
+
+    result = zeCommandQueueExecuteCommandLists(command_queue, 1, &command_list, nullptr);
+    CHECK_ZE_STATUS(result, "zeCommandQueueExecuteCommandLists");
+
+    result = zeCommandQueueSynchronize(command_queue, UINT64_MAX);
+    CHECK_ZE_STATUS(result, "zeCommandQueueSynchronize");
+
+    result = zeCommandListReset(command_list);
+    CHECK_ZE_STATUS(result, "zeCommandListReset");
+}

@@ -40,10 +40,18 @@ private:
     ze_context_handle_t context;
     ze_command_list_handle_t command_list = nullptr;
     ze_command_queue_handle_t command_queue = nullptr;
+
     void* devBuf = nullptr;
     size_t elemCount = 0;
-
+    const char *kernelSpvFile;
+    const char *kernelFuncName;
+    std::vector<char> kernelSpvBin;
+    ze_module_handle_t module = nullptr;
+    ze_kernel_handle_t function = nullptr;
+    
     ze_device_handle_t findDevice(ze_driver_handle_t pDriver, ze_device_type_t type, int devIdx);
+    int readKernel();
+    int initKernel();
 
 public:
     lzContext(/* args */);
@@ -54,5 +62,6 @@ public:
     int initZe(int devIdx);
     void* initBuffer (size_t elem_count);
     void copyBuffer(std::vector<uint32_t> &hostBuf);
+    void runKernel(char* spvFile, char* funcName, void* remoteBuf);
 };
 
