@@ -167,6 +167,43 @@ int lzContext::initZe(int devIdx)
     return 0;
 }
 
+void* lzContext::initBuffer(size_t elem_count)
+{
+    ze_result_t result; 
+    std::vector<uint32_t> hostBuf(elem_count, 0);
+    for (size_t i = 0; i < elem_count; i++)
+        hostBuf[i] = i;
+
+    ze_device_mem_alloc_desc_t device_desc = { 
+        ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC, 
+        nullptr, 
+        0, 
+        0 
+    };
+    result = zeMemAllocDevice(context, &device_desc, elem_count*sizeof(uint32_t), 1, pDevice, &devBuf);
+    CHECK_ZE_STATUS(result, "zeMemAllocDevice");
+
+    result = zeCommandListAppendMemoryCopy(command_list, devBuf, hostBuf.data(), elem_count*sizeof(uint32_t), nullptr, 0, nullptr);
+    CHECK_ZE_STATUS(result, "zeCommandListAppendMemoryCopy");
+
+    result = zeCommandListAppendBarrier(command_list, nullptr, 0, nullptr);
+    CHECK_ZE_STATUS(result, "zeCommandListAppendBarrier");
+
+    result = zeCommandListClose(command_list);
+    CHECK_ZE_STATUS(result, "zeCommandListClose");
+
+    result = zeCommandQueueExecuteCommandLists(command_queue, 1, &command_list, nullptr);
+    CHECK_ZE_STATUS(result, "zeCommandQueueExecuteCommandLists");
+
+    result = zeCommandQueueSynchronize(command_queue, UINT64_MAX);
+    CHECK_ZE_STATUS(result, "zeCommandQueueSynchronize");
+
+    result = zeCommandListReset(command_list);
+    CHECK_ZE_STATUS(result, "zeCommandListReset");
+
+    return devBuf;
+}
+
 void queryP2P(ze_device_handle_t dev0, ze_device_handle_t dev1)
 {
     ze_result_t result; 

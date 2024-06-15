@@ -40,6 +40,7 @@ private:
     ze_context_handle_t context;
     ze_command_list_handle_t command_list = nullptr;
     ze_command_queue_handle_t command_queue = nullptr;
+    void* devBuf = nullptr;
 
     ze_device_handle_t findDevice(ze_driver_handle_t pDriver, ze_device_type_t type, int devIdx);
 
@@ -50,5 +51,6 @@ public:
     ze_device_handle_t device() {return pDevice;};
 
     int initZe(int devIdx);
+    void* initBuffer (size_t elem_count);
 };
 
