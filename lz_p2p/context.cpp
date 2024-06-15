@@ -170,8 +170,10 @@ int lzContext::initZe(int devIdx)
 void* lzContext::initBuffer(size_t elem_count)
 {
     ze_result_t result; 
-    std::vector<uint32_t> hostBuf(elem_count, 0);
-    for (size_t i = 0; i < elem_count; i++)
+    elemCount = elem_count;
+
+    std::vector<uint32_t> hostBuf(elemCount, 0);
+    for (size_t i = 0; i < elemCount; i++)
         hostBuf[i] = i;
 
     ze_device_mem_alloc_desc_t device_desc = { 
@@ -180,10 +182,10 @@ void* lzContext::initBuffer(size_t elem_count)
         0, 
         0 
     };
-    result = zeMemAllocDevice(context, &device_desc, elem_count*sizeof(uint32_t), 1, pDevice, &devBuf);
+    result = zeMemAllocDevice(context, &device_desc, elemCount*sizeof(uint32_t), 1, pDevice, &devBuf);
     CHECK_ZE_STATUS(result, "zeMemAllocDevice");
 
-    result = zeCommandListAppendMemoryCopy(command_list, devBuf, hostBuf.data(), elem_count*sizeof(uint32_t), nullptr, 0, nullptr);
+    result = zeCommandListAppendMemoryCopy(command_list, devBuf, hostBuf.data(), elemCount*sizeof(uint32_t), nullptr, 0, nullptr);
     CHECK_ZE_STATUS(result, "zeCommandListAppendMemoryCopy");
 
     result = zeCommandListAppendBarrier(command_list, nullptr, 0, nullptr);
@@ -202,6 +204,27 @@ void* lzContext::initBuffer(size_t elem_count)
     CHECK_ZE_STATUS(result, "zeCommandListReset");
 
     return devBuf;
+}
+
+void lzContext::copyBuffer(std::vector<uint32_t> &hostBuf)
+{
+    ze_result_t result; 
+
+    result = zeCommandListAppendMemoryCopy(command_list, hostBuf.data(), devBuf, elemCount*sizeof(uint32_t), nullptr, 0, nullptr);
+    CHECK_ZE_STATUS(result, "zeCommandListAppendMemoryCopy");
+
+    result = zeCommandListClose(command_list);
+    CHECK_ZE_STATUS(result, "zeCommandListClose");
+
+    result = zeCommandQueueExecuteCommandLists(command_queue, 1, &command_list, nullptr);
+    CHECK_ZE_STATUS(result, "zeCommandQueueExecuteCommandLists");
+
+    result = zeCommandQueueSynchronize(command_queue, UINT64_MAX);
+    CHECK_ZE_STATUS(result, "zeCommandQueueSynchronize");
+
+    result = zeCommandListReset(command_list);
+    CHECK_ZE_STATUS(result, "zeCommandListReset");
+
 }
 
 void queryP2P(ze_device_handle_t dev0, ze_device_handle_t dev1)
