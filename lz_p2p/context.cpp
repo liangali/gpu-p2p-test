@@ -166,3 +166,15 @@ int lzContext::initZe()
 
     return 0;
 }
+
+void lzContext::queryP2P()
+{
+    ze_result_t result; 
+    ze_device_p2p_properties_t p2pProperties = {};
+    p2pProperties.stype = ZE_STRUCTURE_TYPE_DEVICE_P2P_PROPERTIES;
+    p2pProperties.pNext = nullptr;
+    p2pProperties.flags = 0;
+    result = zeDeviceGetP2PProperties(pDevice, pDevice, &p2pProperties);
+
+    printf("%s, flags = %d\n", __FUNCTION__, p2pProperties.flags);
+}

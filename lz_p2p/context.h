@@ -46,5 +46,6 @@ public:
     ~lzContext();
 
     int initZe();
+    void queryP2P();
 };
 
