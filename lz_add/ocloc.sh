@@ -1,0 +1,1 @@
+ocloc -file add_kernel.cl -device dg2
