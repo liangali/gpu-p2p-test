@@ -11,7 +11,7 @@ lzContext::~lzContext()
     printf("INFO: Enter %s \n", __FUNCTION__);
 }
 
-ze_device_handle_t lzContext::findDevice(ze_driver_handle_t pDriver, ze_device_type_t type)
+ze_device_handle_t lzContext::findDevice(ze_driver_handle_t pDriver, ze_device_type_t type, int devIdx)
 {
     // get all devices
     uint32_t deviceCount = 0;
@@ -32,7 +32,7 @@ ze_device_handle_t lzContext::findDevice(ze_driver_handle_t pDriver, ze_device_t
         zeDeviceGetProperties(phDevice, &device_properties);
         printf("#### device count = [%d/%d], devcie_name = %s\n", device, deviceCount, device_properties.name);
 
-        if (type == device_properties.type)
+        if (type == device_properties.type && device == devIdx)
         {
             found = phDevice;
 
@@ -100,7 +100,7 @@ ze_device_handle_t lzContext::findDevice(ze_driver_handle_t pDriver, ze_device_t
     return found;
 }
 
-int lzContext::initZe()
+int lzContext::initZe(int devIdx)
 {
     ze_result_t result;
     size_t size = 0;
@@ -120,7 +120,7 @@ int lzContext::initZe()
     for (uint32_t driver = 0; driver < driverCount; ++driver)
     {
         pDriver = drivers[driver];
-        pDevice = findDevice(pDriver, type);
+        pDevice = findDevice(pDriver, type, devIdx);
         if (pDevice)
         {
             printf("INFO: find device handle = 0x%08llx\n", (uint64_t)pDevice);
@@ -167,14 +167,14 @@ int lzContext::initZe()
     return 0;
 }
 
-void lzContext::queryP2P()
+void queryP2P(ze_device_handle_t dev0, ze_device_handle_t dev1)
 {
     ze_result_t result; 
     ze_device_p2p_properties_t p2pProperties = {};
     p2pProperties.stype = ZE_STRUCTURE_TYPE_DEVICE_P2P_PROPERTIES;
     p2pProperties.pNext = nullptr;
     p2pProperties.flags = 0;
-    result = zeDeviceGetP2PProperties(pDevice, pDevice, &p2pProperties);
+    result = zeDeviceGetP2PProperties(dev0, dev1, &p2pProperties);
 
-    printf("%s, flags = %d\n", __FUNCTION__, p2pProperties.flags);
+    printf("%s, dev0 = %p, dev1 = %p, flags = %d\n", __FUNCTION__, dev0, dev1, p2pProperties.flags);
 }

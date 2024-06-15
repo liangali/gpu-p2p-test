@@ -29,6 +29,8 @@
         printf("INFO[ZE]: %s succeed\n", msg);                                                                     \
     }
 
+void queryP2P(ze_device_handle_t dev0, ze_device_handle_t dev1);
+
 class lzContext
 {
 private:
@@ -39,13 +41,14 @@ private:
     ze_command_list_handle_t command_list = nullptr;
     ze_command_queue_handle_t command_queue = nullptr;
 
-    ze_device_handle_t findDevice(ze_driver_handle_t pDriver, ze_device_type_t type);
+    ze_device_handle_t findDevice(ze_driver_handle_t pDriver, ze_device_type_t type, int devIdx);
 
 public:
     lzContext(/* args */);
     ~lzContext();
 
-    int initZe();
-    void queryP2P();
+    ze_device_handle_t device() {return pDevice;};
+
+    int initZe(int devIdx);
 };
 
