@@ -7,10 +7,6 @@ cd lz_add/build
 cmake ..
 make
 ./add
-
-# run with drm trace
-cp ../../*.py ./
-python ./auto.py ./add
 ```
 
 lz_p2p
@@ -19,9 +15,12 @@ lz_p2p
 cd lz_p2p/build
 cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="-O0 -g"
 make
-./p2p
+./p2p -l 0 -r 1 -n 4m
 
 # run with drm trace
-cp ../../*.py ./
-python ./auto.py ./p2p
+sudo apt update
+sudo apt install trace-cmd
+cd lz_p2p/build
+cp ../../auto.py ./
+python ./auto.py ./p2p -l 0 -r 1 -n 4m
 ```
