@@ -7,7 +7,7 @@ void printBuf(std::vector<uint32_t> &buf, int size)
 {
     for (int i = 0; i < size; i++) {
         printf("%d, ", buf[i]);
-        if (i % 16 == 0)
+        if (i && i % 16 == 0)
             printf("\n");
     }  
     printf("\n");
