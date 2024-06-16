@@ -352,7 +352,6 @@ void lzContext::runKernel(char *spvFile, char *funcName, void *remoteBuf)
     ze_kernel_timestamp_result_t *kernelTsResults = reinterpret_cast<ze_kernel_timestamp_result_t *>(timestampBuffer);
     uint64_t timerResolution = deviceProperties.timerResolution;
     uint64_t kernelDuration = kernelTsResults->context.kernelEnd - kernelTsResults->context.kernelStart;
-    uint64_t gpuKernelTime;
 
     std::cout << "Kernel timestamp statistics (prior to V1.2): \n"
               << std::fixed
@@ -363,30 +362,8 @@ void lzContext::runKernel(char *spvFile, char *funcName, void *remoteBuf)
               << "\ttimerResolution: " << std::dec << timerResolution << " ns\n"
               << "\tKernel duration : " << std::dec << kernelDuration << " cycles\n"
               << "\tKernel Time: " << kernelDuration * timerResolution / 1000.0 << " us\n";
-              gpuKernelTime = kernelDuration * timerResolution;
-/*
-    if (deviceProperties.stype == ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES_1_2) {
-        std::cout << "Kernel timestamp statistics (V1.2 and later): \n"
-                  << std::fixed
-                  << "\tGlobal start : " << std::dec << kernelTsResults->global.kernelStart << " cycles\n"
-                  << "\tKernel start: " << std::dec << kernelTsResults->context.kernelStart << " cycles\n"
-                  << "\tKernel end: " << std::dec << kernelTsResults->context.kernelEnd << " cycles\n"
-                  << "\tGlobal end: " << std::dec << kernelTsResults->global.kernelEnd << " cycles\n"
-                  << "\ttimerResolution clock: " << std::dec << timerResolution << " cycles/s\n"
-                  << "\tKernel duration : " << std::dec << kernelDuration << " cycles, " << kernelDuration * (1000000000.0 / static_cast<double>(timerResolution)) << " ns\n";
-                  gpuKernelTime =  kernelDuration * (1000000000.0 / static_cast<double>(timerResolution));
-    } else {
-        std::cout << "Kernel timestamp statistics (prior to V1.2): \n"
-                  << std::fixed
-                  << "\tGlobal start : " << std::dec << kernelTsResults->global.kernelStart << " cycles\n"
-                  << "\tKernel start: " << std::dec << kernelTsResults->context.kernelStart << " cycles\n"
-                  << "\tKernel end: " << std::dec << kernelTsResults->context.kernelEnd << " cycles\n"
-                  << "\tGlobal end: " << std::dec << kernelTsResults->global.kernelEnd << " cycles\n"
-                  << "\ttimerResolution: " << std::dec << timerResolution << " ns\n"
-                  << "\tKernel duration : " << std::dec << kernelDuration << " cycles\n"
-                  << "\tKernel Time: " << kernelDuration * timerResolution << " ns\n";
-                  gpuKernelTime = kernelDuration * timerResolution;
-    }
-*/
-
+    
+    double gpuKernelTime = kernelDuration * timerResolution / 1000.0;
+    double bandWidth = elemCount * sizeof(uint32_t) / (gpuKernelTime / 1e6) / 1e9;
+    printf("#### gpuKernelTime = %f, elemCount = %d, Bandwidth = %f GB/s\n", gpuKernelTime, elemCount, bandWidth);
 }
