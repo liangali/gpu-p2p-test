@@ -13,8 +13,38 @@ void printBuf(std::vector<uint32_t> &buf, int size)
     printf("\n");
 }
 
-int main()
+int parseInput(const std::string& input) {
+    int multiplier = 1; 
+    int length = input.length();
+
+    char lastChar = std::tolower(input[length - 1]);
+    if (lastChar == 'k') {
+        multiplier = 1024;
+        length--;
+    } else if (lastChar == 'm') {
+        multiplier = 1024*1024;
+        length--;
+    }
+
+    for (int i = 0; i < length; ++i) {
+        if (!std::isdigit(input[i])) {
+            std::cerr << "ERROR: Invalid input (requires number or number with k or m, e.g., 256, 2k, 4m)" << std::endl;
+            exit(-1);
+        }
+    }
+
+    int number = std::stoi(input.substr(0, length));
+
+    return number * multiplier;
+}
+
+int main(int argc, char** argv)
 {
+    int elem_num = 1024;
+    if (argc >= 2)
+        elem_num = parseInput(argv[1]);
+    printf("Number of test data = %d, size = %d\n", elem_num, elem_num * sizeof(uint32_t));
+
     lzContext ctx0, ctx1;
     ctx0.initZe(0);
     ctx1.initZe(1);
@@ -22,15 +52,15 @@ int main()
     queryP2P(ctx0.device(), ctx1.device());
     queryP2P(ctx1.device(), ctx0.device());
 
-    void* buf0 = ctx0.initBuffer(1024);
-    void* buf1 = ctx1.initBuffer(1024);
+    void* buf0 = ctx0.initBuffer(elem_num);
+    void* buf1 = ctx1.initBuffer(elem_num);
     printf("buf0 = %p, buf1 = %p\n", buf0, buf1);
 
-    std::vector<uint32_t> hostBuf0(1024, 0);
+    std::vector<uint32_t> hostBuf0(elem_num, 0);
     ctx0.copyBuffer(hostBuf0);
     printBuf(hostBuf0, 16);
 
-    std::vector<uint32_t> hostBuf1(1024, 0);
+    std::vector<uint32_t> hostBuf1(elem_num, 0);
     ctx1.copyBuffer(hostBuf1);
     printBuf(hostBuf0, 16);
 
