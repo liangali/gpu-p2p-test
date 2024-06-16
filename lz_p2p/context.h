@@ -26,7 +26,7 @@
     }                                                                                                              \
     else                                                                                                           \
     {                                                                                                              \
-        printf("INFO[ZE]: %s succeed\n", msg);                                                                     \
+        /*printf("INFO[ZE]: %s succeed\n", msg);    */                                                             \
     }
 
 void queryP2P(ze_device_handle_t dev0, ze_device_handle_t dev1);
@@ -67,7 +67,7 @@ public:
     ze_device_handle_t device() {return pDevice;};
 
     int initZe(int devIdx);
-    void* initBuffer (size_t elem_count);
+    void* initBuffer (size_t elem_count, int offset);
     void copyBuffer(std::vector<uint32_t> &hostBuf);
     void runKernel(char* spvFile, char* funcName, void* remoteBuf);
 };

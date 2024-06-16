@@ -97,8 +97,8 @@ int main(int argc, char** argv)
     queryP2P(ctx0.device(), ctx1.device());
     queryP2P(ctx1.device(), ctx0.device());
 
-    void* buf0 = ctx0.initBuffer(data_count);
-    void* buf1 = ctx1.initBuffer(data_count);
+    void* buf0 = ctx0.initBuffer(data_count, 0);
+    void* buf1 = ctx1.initBuffer(data_count, 1);
     printf("buf0 = %p, buf1 = %p\n", buf0, buf1);
 
     std::vector<uint32_t> hostBuf0(data_count, 0);
@@ -107,11 +107,15 @@ int main(int argc, char** argv)
 
     std::vector<uint32_t> hostBuf1(data_count, 0);
     ctx1.copyBuffer(hostBuf1);
-    printBuf(hostBuf0, 16);
+    printBuf(hostBuf1, 16);
 
-    ctx0.runKernel("../add_kernel_dg2.spv", "vector_add", buf1);
+    ctx0.runKernel("../test_kernel_dg2.spv", "local_read_from_remote", buf1);
     ctx0.copyBuffer(hostBuf0);
     printBuf(hostBuf0, 16);
+
+    ctx0.runKernel("../test_kernel_dg2.spv", "local_write_to_remote", buf1);
+    ctx1.copyBuffer(hostBuf1);
+    printBuf(hostBuf1, 16);
 
     printf("done\n");
     return 0;

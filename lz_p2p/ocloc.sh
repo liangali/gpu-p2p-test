@@ -1,1 +1,1 @@
-ocloc -file add_kernel.cl -device dg2
+ocloc -file test_kernel.cl -device dg2

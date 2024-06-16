@@ -194,14 +194,14 @@ int lzContext::initZe(int devIdx)
     return 0;
 }
 
-void *lzContext::initBuffer(size_t elem_count)
+void *lzContext::initBuffer(size_t elem_count, int offset)
 {
     ze_result_t result;
     elemCount = elem_count;
 
     std::vector<uint32_t> hostBuf(elemCount, 0);
     for (size_t i = 0; i < elemCount; i++)
-        hostBuf[i] = i;
+        hostBuf[i] = offset + (i%1024);
 
     ze_device_mem_alloc_desc_t device_desc = {
         ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC,
