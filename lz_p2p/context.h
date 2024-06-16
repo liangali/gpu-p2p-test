@@ -40,6 +40,11 @@ private:
     ze_context_handle_t context;
     ze_command_list_handle_t command_list = nullptr;
     ze_command_queue_handle_t command_queue = nullptr;
+    ze_device_properties_t deviceProperties = {};
+
+    ze_event_pool_handle_t eventPool = nullptr;
+    ze_event_handle_t kernelTsEvent = nullptr;
+    void *timestampBuffer = nullptr;
 
     void* devBuf = nullptr;
     size_t elemCount = 0;
@@ -50,8 +55,10 @@ private:
     ze_kernel_handle_t function = nullptr;
     
     ze_device_handle_t findDevice(ze_driver_handle_t pDriver, ze_device_type_t type, int devIdx);
+    void initTimeStamp();
     int readKernel();
     int initKernel();
+    
 
 public:
     lzContext(/* args */);

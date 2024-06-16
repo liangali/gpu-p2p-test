@@ -64,7 +64,7 @@ ze_device_handle_t lzContext::findDevice(ze_driver_handle_t pDriver, ze_device_t
             zeDeviceGetMemoryProperties(phDevice, &memoryCount, pMemoryProperties);
             for (uint32_t mem = 0; mem < memoryCount; ++mem)
             {
-                //std::cout << to_string( pMemoryProperties[ mem ] ) << "\n";
+                // std::cout << to_string( pMemoryProperties[ mem ] ) << "\n";
             }
             delete[] pMemoryProperties;
 
@@ -98,6 +98,28 @@ ze_device_handle_t lzContext::findDevice(ze_driver_handle_t pDriver, ze_device_t
     }
 
     return found;
+}
+
+void lzContext::initTimeStamp()
+{
+    ze_result_t result;
+    ze_event_pool_desc_t eventPoolDesc = {ZE_STRUCTURE_TYPE_EVENT_POOL_DESC};
+    eventPoolDesc.count = 1;
+    eventPoolDesc.flags = ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP;
+    result = zeEventPoolCreate(context, &eventPoolDesc, 1, &pDevice, &eventPool);
+    CHECK_ZE_STATUS(result, "zeEventPoolCreate");
+
+    ze_event_desc_t eventDesc = {ZE_STRUCTURE_TYPE_EVENT_DESC};
+    eventDesc.index = 0;
+    eventDesc.signal = ZE_EVENT_SCOPE_FLAG_HOST;
+    eventDesc.wait = ZE_EVENT_SCOPE_FLAG_HOST;
+    result = zeEventCreate(eventPool, &eventDesc, &kernelTsEvent);
+    CHECK_ZE_STATUS(result, "zeEventPoolCreate");
+
+    ze_host_mem_alloc_desc_t hostDesc = {ZE_STRUCTURE_TYPE_HOST_MEM_ALLOC_DESC};
+    zeMemAllocHost(context, &hostDesc, sizeof(ze_kernel_timestamp_result_t), 1, &timestampBuffer);
+    CHECK_ZE_STATUS(result, "zeMemAllocHost");
+    memset(timestampBuffer, 0, sizeof(ze_kernel_timestamp_result_t));
 }
 
 int lzContext::initZe(int devIdx)
@@ -158,34 +180,38 @@ int lzContext::initZe(int devIdx)
     descriptor_cmdqueue.priority = ZE_COMMAND_QUEUE_PRIORITY_NORMAL;
     descriptor_cmdqueue.ordinal = 0;
     descriptor_cmdqueue.index = 0;
-    ze_device_properties_t properties = {};
-    result = zeDeviceGetProperties(pDevice, &properties);
-    CHECK_ZE_STATUS(result, "zeDeviceGetProperties");
     result = zeCommandQueueCreate(context, pDevice, &descriptor_cmdqueue, &command_queue);
     CHECK_ZE_STATUS(result, "zeCommandQueueCreate");
+
+    ze_device_properties_t properties = {};
+    properties.stype = ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES;
+    result = zeDeviceGetProperties(pDevice, &properties);
+    CHECK_ZE_STATUS(result, "zeDeviceGetProperties");
+    deviceProperties = properties;
+
+    initTimeStamp();
 
     return 0;
 }
 
-void* lzContext::initBuffer(size_t elem_count)
+void *lzContext::initBuffer(size_t elem_count)
 {
-    ze_result_t result; 
+    ze_result_t result;
     elemCount = elem_count;
 
     std::vector<uint32_t> hostBuf(elemCount, 0);
     for (size_t i = 0; i < elemCount; i++)
         hostBuf[i] = i;
 
-    ze_device_mem_alloc_desc_t device_desc = { 
-        ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC, 
-        nullptr, 
-        0, 
-        0 
-    };
-    result = zeMemAllocDevice(context, &device_desc, elemCount*sizeof(uint32_t), 1, pDevice, &devBuf);
+    ze_device_mem_alloc_desc_t device_desc = {
+        ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC,
+        nullptr,
+        0,
+        0};
+    result = zeMemAllocDevice(context, &device_desc, elemCount * sizeof(uint32_t), 1, pDevice, &devBuf);
     CHECK_ZE_STATUS(result, "zeMemAllocDevice");
 
-    result = zeCommandListAppendMemoryCopy(command_list, devBuf, hostBuf.data(), elemCount*sizeof(uint32_t), nullptr, 0, nullptr);
+    result = zeCommandListAppendMemoryCopy(command_list, devBuf, hostBuf.data(), elemCount * sizeof(uint32_t), nullptr, 0, nullptr);
     CHECK_ZE_STATUS(result, "zeCommandListAppendMemoryCopy");
 
     result = zeCommandListAppendBarrier(command_list, nullptr, 0, nullptr);
@@ -208,9 +234,9 @@ void* lzContext::initBuffer(size_t elem_count)
 
 void lzContext::copyBuffer(std::vector<uint32_t> &hostBuf)
 {
-    ze_result_t result; 
+    ze_result_t result;
 
-    result = zeCommandListAppendMemoryCopy(command_list, hostBuf.data(), devBuf, elemCount*sizeof(uint32_t), nullptr, 0, nullptr);
+    result = zeCommandListAppendMemoryCopy(command_list, hostBuf.data(), devBuf, elemCount * sizeof(uint32_t), nullptr, 0, nullptr);
     CHECK_ZE_STATUS(result, "zeCommandListAppendMemoryCopy");
 
     result = zeCommandListClose(command_list);
@@ -224,12 +250,11 @@ void lzContext::copyBuffer(std::vector<uint32_t> &hostBuf)
 
     result = zeCommandListReset(command_list);
     CHECK_ZE_STATUS(result, "zeCommandListReset");
-
 }
 
 void queryP2P(ze_device_handle_t dev0, ze_device_handle_t dev1)
 {
-    ze_result_t result; 
+    ze_result_t result;
     ze_device_p2p_properties_t p2pProperties = {};
     p2pProperties.stype = ZE_STRUCTURE_TYPE_DEVICE_P2P_PROPERTIES;
     p2pProperties.pNext = nullptr;
@@ -241,11 +266,12 @@ void queryP2P(ze_device_handle_t dev0, ze_device_handle_t dev1)
 
 int lzContext::initKernel()
 {
-    ze_result_t result; 
+    ze_result_t result;
     FILE *fp = nullptr;
     size_t nsize = 0;
     fp = fopen(kernelSpvFile, "rb");
-    if (fp) {
+    if (fp)
+    {
         fseek(fp, 0, SEEK_END);
         nsize = (size_t)ftell(fp);
         fseek(fp, 0, SEEK_SET);
@@ -255,7 +281,9 @@ int lzContext::initKernel()
         fread(kernelSpvBin.data(), sizeof(unsigned char), nsize, fp);
 
         fclose(fp);
-    } else {
+    }
+    else
+    {
         printf("ERROR: cannot open kernel spv file %\n", kernelSpvFile);
         exit(1);
     }
@@ -283,9 +311,9 @@ int lzContext::initKernel()
     return 0;
 }
 
-void lzContext::runKernel(char *spvFile, char *funcName, void* remoteBuf)
+void lzContext::runKernel(char *spvFile, char *funcName, void *remoteBuf)
 {
-    ze_result_t result; 
+    ze_result_t result;
 
     kernelSpvFile = spvFile;
     kernelFuncName = funcName;
@@ -295,16 +323,19 @@ void lzContext::runKernel(char *spvFile, char *funcName, void* remoteBuf)
     // set kernel arguments
     result = zeKernelSetArgumentValue(function, 0, sizeof(devBuf), &devBuf);
     CHECK_ZE_STATUS(result, "zeKernelSetArgumentValue");
-    
+
     result = zeKernelSetArgumentValue(function, 1, sizeof(remoteBuf), &remoteBuf);
     CHECK_ZE_STATUS(result, "zeKernelSetArgumentValue");
 
-    ze_group_count_t groupCount = { elemCount, 1, 1 };
-    result = zeCommandListAppendLaunchKernel(command_list, function, &groupCount, nullptr, 0, nullptr);
+    ze_group_count_t groupCount = {elemCount, 1, 1};
+    result = zeCommandListAppendLaunchKernel(command_list, function, &groupCount, kernelTsEvent, 0, nullptr);
     CHECK_ZE_STATUS(result, "zeCommandListAppendLaunchKernel");
 
     result = zeCommandListAppendBarrier(command_list, nullptr, 0, nullptr);
     CHECK_ZE_STATUS(result, "zeCommandListAppendBarrier");
+
+    result = zeCommandListAppendQueryKernelTimestamps(command_list, 1u, &kernelTsEvent, timestampBuffer, nullptr, nullptr, 0u, nullptr);
+    CHECK_ZE_STATUS(result, "zeCommandListAppendQueryKernelTimestamps");
 
     result = zeCommandListClose(command_list);
     CHECK_ZE_STATUS(result, "zeCommandListClose");
@@ -317,4 +348,45 @@ void lzContext::runKernel(char *spvFile, char *funcName, void* remoteBuf)
 
     result = zeCommandListReset(command_list);
     CHECK_ZE_STATUS(result, "zeCommandListReset");
+
+    ze_kernel_timestamp_result_t *kernelTsResults = reinterpret_cast<ze_kernel_timestamp_result_t *>(timestampBuffer);
+    uint64_t timerResolution = deviceProperties.timerResolution;
+    uint64_t kernelDuration = kernelTsResults->context.kernelEnd - kernelTsResults->context.kernelStart;
+    uint64_t gpuKernelTime;
+
+    std::cout << "Kernel timestamp statistics (prior to V1.2): \n"
+              << std::fixed
+              << "\tGlobal start : " << std::dec << kernelTsResults->global.kernelStart << " cycles\n"
+              << "\tKernel start: " << std::dec << kernelTsResults->context.kernelStart << " cycles\n"
+              << "\tKernel end: " << std::dec << kernelTsResults->context.kernelEnd << " cycles\n"
+              << "\tGlobal end: " << std::dec << kernelTsResults->global.kernelEnd << " cycles\n"
+              << "\ttimerResolution: " << std::dec << timerResolution << " ns\n"
+              << "\tKernel duration : " << std::dec << kernelDuration << " cycles\n"
+              << "\tKernel Time: " << kernelDuration * timerResolution / 1000.0 << " us\n";
+              gpuKernelTime = kernelDuration * timerResolution;
+/*
+    if (deviceProperties.stype == ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES_1_2) {
+        std::cout << "Kernel timestamp statistics (V1.2 and later): \n"
+                  << std::fixed
+                  << "\tGlobal start : " << std::dec << kernelTsResults->global.kernelStart << " cycles\n"
+                  << "\tKernel start: " << std::dec << kernelTsResults->context.kernelStart << " cycles\n"
+                  << "\tKernel end: " << std::dec << kernelTsResults->context.kernelEnd << " cycles\n"
+                  << "\tGlobal end: " << std::dec << kernelTsResults->global.kernelEnd << " cycles\n"
+                  << "\ttimerResolution clock: " << std::dec << timerResolution << " cycles/s\n"
+                  << "\tKernel duration : " << std::dec << kernelDuration << " cycles, " << kernelDuration * (1000000000.0 / static_cast<double>(timerResolution)) << " ns\n";
+                  gpuKernelTime =  kernelDuration * (1000000000.0 / static_cast<double>(timerResolution));
+    } else {
+        std::cout << "Kernel timestamp statistics (prior to V1.2): \n"
+                  << std::fixed
+                  << "\tGlobal start : " << std::dec << kernelTsResults->global.kernelStart << " cycles\n"
+                  << "\tKernel start: " << std::dec << kernelTsResults->context.kernelStart << " cycles\n"
+                  << "\tKernel end: " << std::dec << kernelTsResults->context.kernelEnd << " cycles\n"
+                  << "\tGlobal end: " << std::dec << kernelTsResults->global.kernelEnd << " cycles\n"
+                  << "\ttimerResolution: " << std::dec << timerResolution << " ns\n"
+                  << "\tKernel duration : " << std::dec << kernelDuration << " cycles\n"
+                  << "\tKernel Time: " << kernelDuration * timerResolution << " ns\n";
+                  gpuKernelTime = kernelDuration * timerResolution;
+    }
+*/
+
 }
