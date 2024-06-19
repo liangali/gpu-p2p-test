@@ -1,14 +1,5 @@
 # level-zero-p2p
 
-lz_add
-
-```bash
-cd lz_add/build
-cmake ..
-make
-./add
-```
-
 lz_p2p
 
 ```bash
@@ -73,4 +64,19 @@ Kernel timestamp statistics (prior to V1.2):
 done
 INFO: Enter ~lzContext 
 INFO: Enter ~lzContext
+```
+
+ocl_p2p
+
+```bash
+sudo apt update
+sudo apt install opencl-headers
+sudo apt install ocl-icd-opencl-dev
+
+cd ocl_p2p/build
+cmake ..
+make
+
+./oclp2p
+
 ```
