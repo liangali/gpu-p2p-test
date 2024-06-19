@@ -83,6 +83,7 @@ private:
     cl_platform_id platform_ = nullptr;
     cl_device_id device_ = nullptr;
     cl_context context_ = nullptr;
+    cl_command_queue queue_ = nullptr;
 
 public:
     oclContext(/* args */);

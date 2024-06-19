@@ -9,6 +9,7 @@ oclContext::~oclContext()
 {
     printf("Enter %s\n", __FUNCTION__);
 
+    clReleaseCommandQueue(queue_);
     clReleaseContext(context_);
 }
 
@@ -29,7 +30,7 @@ void oclContext::init(int devIdx)
 
         if (num_devices > 0) {
             platform_ = platform;
-            printf("Platform has %d GPU devices, platform handle = %p\n", num_devices, platform_);
+            printf("Platform %p has %d GPU devices\n", platform_, num_devices);
 
             std::vector<cl_device_id> devices(num_devices);
             err = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, num_devices, devices.data(), nullptr);
@@ -41,14 +42,18 @@ void oclContext::init(int devIdx)
             }
 
             device_ = devices[devIdx];
+
             context_ = clCreateContext(NULL, 1, &device_, NULL, NULL, &err);
             CHECK_OCL_ERROR_EXIT(err, "clCreateContext");
+
+            queue_ = clCreateCommandQueue(context_, device_, 0, &err);
+            CHECK_OCL_ERROR_EXIT(err, "clCreateCommandQueue");
 
             char device_name[1024];
             err = clGetDeviceInfo(device_, CL_DEVICE_NAME, sizeof(device_name), device_name, nullptr);
             CHECK_OCL_ERROR_EXIT(err, "clGetDeviceInfo");
 
-            printf("Created OpenCL GPU device for devIdx = %d on %s, device handle = %p\n", devIdx, device_name, device_);
+            printf("Created device for devIdx = %d on %s, device = %p, contex = %p, queue = %p\n", devIdx, device_name, device_, context_, queue_);
 
             return;
         }
