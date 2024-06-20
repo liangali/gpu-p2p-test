@@ -80,3 +80,16 @@ make
 ./oclp2p
 
 ```
+
+Results
+
+```
+Platform 0x5594724d5970 has 2 GPU devices
+Created device for devIdx = 0 on Intel(R) Data Center GPU Flex 170, device = 0x5594724d5a40, contex = 0x5594724dad20, queue = 0x55947154d260
+Platform 0x5594724d5970 has 2 GPU devices
+Created device for devIdx = 0 on Intel(R) Data Center GPU Flex 170, device = 0x5594724d5a40, contex = 0x55947154eb10, queue = 0x5594724e51e0
+buf0 = 0xffff8081fff60000, buf1 = 0xffff8081ffdf0000
+0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 
+1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 
+ERROR: oclContext::runKernel, line = 138, clSetKernelArg failed! err = -50 (CL_INVALID_ARG_VALUE)
+```

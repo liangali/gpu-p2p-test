@@ -41,7 +41,7 @@ int main(int argc, char** argv)
     ctx1.init(remote_gpu);
 
     void* buf0 = ctx0.initUSM(data_count, 0);
-    void* buf1 = ctx0.initUSM(data_count, 1);
+    void* buf1 = ctx1.initUSM(data_count, 1);
     printf("buf0 = %p, buf1 = %p\n", buf0, buf1);
 
     std::vector<uint32_t> hostBuf0(data_count, 0);
@@ -49,7 +49,7 @@ int main(int argc, char** argv)
     printBuf(hostBuf0, 16);
 
     std::vector<uint32_t> hostBuf1(data_count, 0);
-    ctx0.readUSM(buf1, hostBuf1, data_count * sizeof(uint32_t));
+    ctx1.readUSM(buf1, hostBuf1, data_count * sizeof(uint32_t));
     printBuf(hostBuf1, 16);
 
     ctx0.runKernel(read_kernel_code, "read_from_remote", buf0, buf1, data_count);
@@ -61,6 +61,6 @@ int main(int argc, char** argv)
     // printBuf(hostBuf1, 16);
 
     ctx0.freeUSM(buf0);
-    ctx0.freeUSM(buf1);
+    ctx1.freeUSM(buf1);
     return 0;
 }
