@@ -62,3 +62,32 @@ void oclContext::init(int devIdx)
     printf("ERROR: cannot find OpenCL GPU device!\n");
     exit(-1);
 }
+
+void* oclContext::initUSM(size_t elem_count, int offset)
+{
+    cl_int err;
+    void* ptr = nullptr;
+
+    std::vector<uint32_t> hostBuf(elem_count, 0);
+    for (size_t i = 0; i < elem_count; i++)
+        hostBuf[i] = offset + (i%1024);
+
+    size_t size = elem_count * sizeof(uint32_t);
+    cl_uint alignment = 16;
+    ptr = clDeviceMemAllocINTEL(context_, device_, nullptr, size, alignment, &err);
+    CHECK_OCL_ERROR_EXIT(err, "clDeviceMemAllocINTEL failed")
+
+    err = clEnqueueMemcpyINTEL(queue_, true, ptr, (void*)hostBuf.data(), size, 0, nullptr, nullptr);
+    CHECK_OCL_ERROR_EXIT(err, "clEnqueueMemcpyINTEL failed");
+
+    clFinish(queue_);
+
+    return ptr;
+}
+
+void oclContext::freeUSM(void *ptr)
+{
+    cl_int err;
+    err = clMemBlockingFreeINTEL(context_, ptr);
+    CHECK_OCL_ERROR(err, "clMemBlockingFreeINTEL");
+}

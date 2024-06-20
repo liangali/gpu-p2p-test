@@ -6,5 +6,5 @@ project(oclp2p)
 
 link_directories(/usr/lib/x86_64-linux-gnu)
 
-add_executable(oclp2p main.cpp context.cpp)
+add_executable(oclp2p main.cpp context.cpp usm_api.cpp)
 target_link_libraries(oclp2p OpenCL)
