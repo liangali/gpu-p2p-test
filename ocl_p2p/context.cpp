@@ -85,7 +85,7 @@ void* oclContext::initUSM(size_t elem_count, int offset)
     return ptr;
 }
 
-void oclContext::rendUSM(void *ptr, std::vector<uint32_t> &outBuf, size_t size)
+void oclContext::readUSM(void *ptr, std::vector<uint32_t> &outBuf, size_t size)
 {
     cl_int err;
     err = clEnqueueMemcpyINTEL(queue_, true, (void*)outBuf.data(), ptr, size, 0, nullptr, nullptr);
@@ -98,4 +98,50 @@ void oclContext::freeUSM(void *ptr)
     cl_int err;
     err = clMemBlockingFreeINTEL(context_, ptr);
     CHECK_OCL_ERROR(err, "clMemBlockingFreeINTEL");
+}
+
+void oclContext::runKernel(char *kernelCode, char *kernelName, void *ptr0, void *ptr1, size_t elemCount)
+{
+   cl_int err;
+
+    cl_uint knlcount = 1;
+    const char* knlstrList[] = { kernelCode };
+    size_t knlsizeList[] = { strlen(kernelCode) };
+
+    cl_program program = clCreateProgramWithSource(context_, knlcount, knlstrList, knlsizeList, &err);
+    CHECK_OCL_ERROR_EXIT(err, "clCreateProgramWithSource failed");
+
+    std::string buildopt = "-cl-std=CL2.0";
+    err = clBuildProgram(program, 0, NULL, buildopt.c_str(), NULL, NULL);
+    if (err < 0)
+    {
+        size_t logsize = 0;
+        err = clGetProgramBuildInfo(program, device_, CL_PROGRAM_BUILD_LOG, 0, NULL, &logsize);
+        CHECK_OCL_ERROR_EXIT(err, "clGetProgramBuildInfo failed");
+
+        std::vector<char> logbuf(logsize+1, 0);
+        err = clGetProgramBuildInfo(program, device_, CL_PROGRAM_BUILD_LOG, logsize+1, logbuf.data(), NULL);
+        CHECK_OCL_ERROR_EXIT(err, "clGetProgramBuildInfo failed");
+        printf("%s\n", logbuf.data());
+
+        exit(1);
+    }
+
+    cl_kernel kernel = clCreateKernel(program, kernelName, &err);
+    CHECK_OCL_ERROR_EXIT(err, "clCreateKernel failed");
+
+
+    err = clSetKernelArgMemPointerINTEL(kernel, 0, ptr0);
+    CHECK_OCL_ERROR_EXIT(err, "clSetKernelArg failed");
+
+    err = clSetKernelArgMemPointerINTEL(kernel, 1, ptr1);
+    CHECK_OCL_ERROR_EXIT(err, "clSetKernelArg failed");
+
+    size_t global_size[] = { elemCount };
+    err = clEnqueueNDRangeKernel(queue_, kernel, 1, nullptr, global_size, nullptr, 0, nullptr, nullptr);
+    CHECK_OCL_ERROR_EXIT(err, "clEnqueueNDRangeKernel failed");
+    clFinish(queue_);
+
+    clReleaseKernel(kernel);
+    clReleaseProgram(program);
 }

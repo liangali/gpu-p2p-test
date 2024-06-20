@@ -20,6 +20,7 @@ public:
 
     void init(int devIdx);
     void* initUSM(size_t elem_count, int offset);
-    void rendUSM(void* ptr, std::vector<uint32_t> &outBuf, size_t size);
+    void readUSM(void* ptr, std::vector<uint32_t> &outBuf, size_t size);
     void freeUSM(void* ptr);
+    void runKernel(char* programFile, char* kernelName, void *ptr0, void *ptr1, size_t elemCount);
 };

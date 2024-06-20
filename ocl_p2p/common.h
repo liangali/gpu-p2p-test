@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
+#include <string.h>
 
 #include <string>
 #include <vector>
@@ -128,20 +129,20 @@ static std::map<int, const char*> oclChannelType =
 #define CHECK_OCL_ERROR(err, msg) \
     if (err < 0) { \
         std::string errstr = (oclErrorCode.find(err) != oclErrorCode.end()) ? oclErrorCode[err] : "Unknown"; \
-        printf("pyocl:%s:%d, ERROR: %s! err = %d (%s)\n", __FUNCTION__, __LINE__, msg, err, errstr.c_str()); \
+        printf("ERROR: oclContext::%s, line = %d, %s! err = %d (%s)\n", __FUNCTION__, __LINE__, msg, err, errstr.c_str()); \
     }
 
 #define CHECK_OCL_ERROR_RETURN(err, msg, ret) \
     if (err < 0) { \
         std::string errstr = (oclErrorCode.find(err) != oclErrorCode.end()) ? oclErrorCode[err] : "Unknown"; \
-        printf("pyocl:%s:%d, ERROR: %s! err = %d (%s)\n", __FUNCTION__, __LINE__, msg, err, errstr.c_str()); \
+        printf("ERROR: oclContext::%s, line = %d, %s! err = %d (%s)\n", __FUNCTION__, __LINE__, msg, err, errstr.c_str()); \
         return ret; \
     }
 
 #define CHECK_OCL_ERROR_EXIT(err, msg) \
     if (err < 0) { \
         std::string errstr = (oclErrorCode.find(err) != oclErrorCode.end()) ? oclErrorCode[err] : "Unknown"; \
-        printf("pyocl:%s:%d, ERROR: %s! err = %d (%s)\n", __FUNCTION__, __LINE__, msg, err, errstr.c_str()); \
+        printf("ERROR: oclContext::%s, line = %d, %s! err = %d (%s)\n", __FUNCTION__, __LINE__, msg, err, errstr.c_str()); \
         exit(1); \
     }
 
