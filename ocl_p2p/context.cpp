@@ -85,6 +85,14 @@ void* oclContext::initUSM(size_t elem_count, int offset)
     return ptr;
 }
 
+void oclContext::rendUSM(void *ptr, std::vector<uint32_t> &outBuf, size_t size)
+{
+    cl_int err;
+    err = clEnqueueMemcpyINTEL(queue_, true, (void*)outBuf.data(), ptr, size, 0, nullptr, nullptr);
+    CHECK_OCL_ERROR_EXIT(err, "clEnqueueMemcpyINTEL failed");
+    clFinish(queue_);
+}
+
 void oclContext::freeUSM(void *ptr)
 {
     cl_int err;

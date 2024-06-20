@@ -20,5 +20,6 @@ public:
 
     void init(int devIdx);
     void* initUSM(size_t elem_count, int offset);
+    void rendUSM(void* ptr, std::vector<uint32_t> &outBuf, size_t size);
     void freeUSM(void* ptr);
 };
