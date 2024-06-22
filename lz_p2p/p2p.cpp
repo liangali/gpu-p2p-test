@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "context.h"
+#include "lz_context.h"
 
 void printBuf(std::vector<uint32_t> &buf, int size)
 {
@@ -109,11 +109,11 @@ int main(int argc, char** argv)
     ctx1.copyBuffer(hostBuf1);
     printBuf(hostBuf1, 16);
 
-    ctx0.runKernel("../test_kernel_dg2.spv", "local_read_from_remote", buf1);
+    ctx0.runKernel("../../lz_p2p/test_kernel_dg2.spv", "local_read_from_remote", buf1);
     ctx0.copyBuffer(hostBuf0);
     printBuf(hostBuf0, 16);
 
-    ctx0.runKernel("../test_kernel_dg2.spv", "local_write_to_remote", buf1);
+    ctx0.runKernel("../../lz_p2p/test_kernel_dg2.spv", "local_write_to_remote", buf1);
     ctx1.copyBuffer(hostBuf1);
     printBuf(hostBuf1, 16);
 
