@@ -2,7 +2,7 @@
 #include <iostream>
 #include <vector>
 
-#include "context.h"
+#include "ocl_context.h"
 
 char read_kernel_code[] = " \
 kernel void read_from_remote(global int *src1, global int *src2) \

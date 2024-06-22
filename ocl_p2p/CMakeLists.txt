@@ -1,10 +1,7 @@
-cmake_minimum_required(VERSION 2.8)
+add_executable(oclp2p main.cpp)
 
-project(oclp2p)
+include_directories(${CMAKE_SOURCE_DIR}/common)
 
-# include_directories (oclp2p ${CMAKE_CURRENT_LIST_DIR}/../../compute-runtime/third_party/opencl_headers)
+target_link_libraries(oclp2p commonlib)
 
-link_directories(/usr/lib/x86_64-linux-gnu)
-
-add_executable(oclp2p main.cpp context.cpp usm_api.cpp)
 target_link_libraries(oclp2p OpenCL)
