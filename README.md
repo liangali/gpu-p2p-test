@@ -1,22 +1,40 @@
 # level-zero-p2p
 
-lz_p2p
+## build projects
 
 ```bash
-cd lz_p2p/build
+sudo apt update
+sudo apt install opencl-headers
+sudo apt install ocl-icd-opencl-dev
+
+cd gpu-p2p-test
+mkdir build
+cd build
 cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="-O0 -g"
 make
-./p2p -l 0 -r 1 -n 4m
+```
+
+## run tests
+
+```bash
+cd build/lz_p2p
+./lzp2p -l 0 -r 1 -n 4m
+
+cd build/ocl_p2p
+./oclp2p
+
+cd build/interop
+./interop
 
 # run with drm trace
 sudo apt update
 sudo apt install trace-cmd
-cd lz_p2p/build
+cd build/lz_p2p
 cp ../../auto.py ./
-python ./auto.py "./p2p -l 0 -r 1 -n 4m"
+python ./auto.py "./lzp2p -l 0 -r 1 -n 4m"
 ```
 
-Results
+lz_p2p Results
 
 ```
 (base) gta@xxxxxx:~/data/lz_samples/level-zero-p2p/lz_p2p/build$ ./p2p -l 0 -r 1 -n 16m
@@ -66,22 +84,7 @@ INFO: Enter ~lzContext
 INFO: Enter ~lzContext
 ```
 
-ocl_p2p
-
-```bash
-sudo apt update
-sudo apt install opencl-headers
-sudo apt install ocl-icd-opencl-dev
-
-cd ocl_p2p/build
-cmake ..
-make
-
-./oclp2p
-
-```
-
-Results
+ocl_p2p Results
 
 ```
 Platform 0x5594724d5970 has 2 GPU devices
