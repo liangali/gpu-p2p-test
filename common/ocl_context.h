@@ -26,5 +26,8 @@ public:
     void freeUSM(void* ptr);
     void runKernel(char* programFile, char* kernelName, void *ptr0, void *ptr1, size_t elemCount);
 
-    int createHandle(size_t size);
+    cl_mem initBuffer(size_t elem_count, int offset);
+    uint64_t clBufToHandle(cl_mem clbuf);
+    void readBuffer(cl_mem clbuf, std::vector<uint32_t> &outBuf, size_t size);
+    void freeBuffer(cl_mem clbuf);
 };

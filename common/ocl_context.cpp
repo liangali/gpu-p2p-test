@@ -146,17 +146,47 @@ void oclContext::runKernel(char *kernelCode, char *kernelName, void *ptr0, void 
     clReleaseProgram(program);
 }
 
-int oclContext::createHandle(size_t size)
+cl_mem oclContext::initBuffer(size_t elem_count, int offset)
 {
     cl_int err;
-        
+
+    std::vector<uint32_t> hostBuf(elem_count, 0);
+    for (size_t i = 0; i < elem_count; i++)
+        hostBuf[i] = offset + (i%1024);
+
+    size_t size = elem_count * sizeof(uint32_t);
     cl_mem clbuf = clCreateBuffer(context_, CL_MEM_READ_WRITE, size, nullptr, &err);
     CHECK_OCL_ERROR_EXIT(err, "clCreateBuffer");
 
+
+    err = clEnqueueWriteBuffer(queue_, clbuf, CL_TRUE, 0, elem_count * sizeof(int), hostBuf.data(), 0, NULL, NULL);
+    CHECK_OCL_ERROR_EXIT(err, "clEnqueueWriteBuffer failed");
+
+    clFinish(queue_);
+
+    return clbuf;
+}
+
+
+uint64_t oclContext::clBufToHandle(cl_mem clbuf)
+{
+    cl_int err;
     uint64_t nativeHandle;
     err = clGetMemObjectInfo(clbuf, CL_MEM_ALLOCATION_HANDLE_INTEL, sizeof(nativeHandle), &nativeHandle, NULL);
     CHECK_OCL_ERROR(err, "clGetMemObjectInfo - CL_MEM_ALLOCATION_HANDLE_INTEL failed");
-    printf("MemINFO: CL_MEM_ALLOCATION_HANDLE_INTEL = 0x%lx\n", nativeHandle);
 
     return nativeHandle;
+}
+
+void oclContext::readBuffer(cl_mem clbuf, std::vector<uint32_t> &outBuf, size_t size)
+{
+    cl_int err;
+    err = clEnqueueReadBuffer(queue_, clbuf, CL_TRUE, 0, size, outBuf.data(), 0, NULL, NULL);
+    CHECK_OCL_ERROR_EXIT(err, "clEnqueueReadBuffer failed");
+    clFinish(queue_);
+}
+
+void oclContext::freeBuffer(cl_mem clbuf)
+{
+    clReleaseMemObject(clbuf);
 }

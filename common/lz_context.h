@@ -46,8 +46,6 @@ private:
     ze_event_handle_t kernelTsEvent = nullptr;
     void *timestampBuffer = nullptr;
 
-    void* devBuf = nullptr;
-    size_t elemCount = 0;
     const char *kernelSpvFile;
     const char *kernelFuncName;
     std::vector<char> kernelSpvBin;
@@ -68,7 +66,9 @@ public:
 
     int initZe(int devIdx);
     void* initBuffer (size_t elem_count, int offset);
-    void copyBuffer(std::vector<uint32_t> &hostBuf);
-    void runKernel(char* spvFile, char* funcName, void* remoteBuf);
+    void copyBuffer(std::vector<uint32_t> &hostBuf, void* devBuf, size_t elemCount);
+    void runKernel(char* spvFile, char* funcName, void* remoteBuf, void* devBuf, size_t elemCount);
+
+    void* creatBufferFromHandle(uint64_t handle, size_t bufSize);
 };
 

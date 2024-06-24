@@ -102,19 +102,19 @@ int main(int argc, char** argv)
     printf("buf0 = %p, buf1 = %p\n", buf0, buf1);
 
     std::vector<uint32_t> hostBuf0(data_count, 0);
-    ctx0.copyBuffer(hostBuf0);
+    ctx0.copyBuffer(hostBuf0, buf0, data_count);
     printBuf(hostBuf0, 16);
 
     std::vector<uint32_t> hostBuf1(data_count, 0);
-    ctx1.copyBuffer(hostBuf1);
+    ctx1.copyBuffer(hostBuf1, buf1, data_count);
     printBuf(hostBuf1, 16);
 
-    ctx0.runKernel("../../lz_p2p/test_kernel_dg2.spv", "local_read_from_remote", buf1);
-    ctx0.copyBuffer(hostBuf0);
+    ctx0.runKernel("../../lz_p2p/test_kernel_dg2.spv", "local_read_from_remote", buf1, buf0, data_count);
+    ctx0.copyBuffer(hostBuf0, buf0, data_count);
     printBuf(hostBuf0, 16);
 
-    ctx0.runKernel("../../lz_p2p/test_kernel_dg2.spv", "local_write_to_remote", buf1);
-    ctx1.copyBuffer(hostBuf1);
+    ctx0.runKernel("../../lz_p2p/test_kernel_dg2.spv", "local_write_to_remote", buf1, buf0, data_count);
+    ctx1.copyBuffer(hostBuf1, buf1, data_count);
     printBuf(hostBuf1, 16);
 
     printf("done\n");

@@ -194,10 +194,10 @@ int lzContext::initZe(int devIdx)
     return 0;
 }
 
-void *lzContext::initBuffer(size_t elem_count, int offset)
+void *lzContext::initBuffer(size_t elemCount, int offset)
 {
     ze_result_t result;
-    elemCount = elem_count;
+    void* devBuf = nullptr;
 
     std::vector<uint32_t> hostBuf(elemCount, 0);
     for (size_t i = 0; i < elemCount; i++)
@@ -232,7 +232,7 @@ void *lzContext::initBuffer(size_t elem_count, int offset)
     return devBuf;
 }
 
-void lzContext::copyBuffer(std::vector<uint32_t> &hostBuf)
+void lzContext::copyBuffer(std::vector<uint32_t> &hostBuf, void* devBuf, size_t elemCount)
 {
     ze_result_t result;
 
@@ -311,7 +311,7 @@ int lzContext::initKernel()
     return 0;
 }
 
-void lzContext::runKernel(char *spvFile, char *funcName, void *remoteBuf)
+void lzContext::runKernel(char *spvFile, char *funcName, void *remoteBuf, void* devBuf, size_t elemCount)
 {
     ze_result_t result;
 
@@ -366,4 +366,35 @@ void lzContext::runKernel(char *spvFile, char *funcName, void *remoteBuf)
     double gpuKernelTime = kernelDuration * timerResolution / 1000.0;
     double bandWidth = elemCount * sizeof(uint32_t) / (gpuKernelTime / 1e6) / 1e9;
     printf("#### gpuKernelTime = %f, elemCount = %d, Bandwidth = %f GB/s\n", gpuKernelTime, elemCount, bandWidth);
+}
+
+void* lzContext::creatBufferFromHandle(uint64_t handle, size_t bufSize)
+{
+    ze_result_t result;
+    ze_device_mem_alloc_desc_t alloc_desc = {
+        ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC,
+        nullptr,
+        0, // flags
+        0  // ordinal
+    };
+    ze_external_memory_import_fd_t import_fd = {
+        ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMPORT_FD,
+        nullptr, // pNext
+        ZE_EXTERNAL_MEMORY_TYPE_FLAG_DMA_BUF,
+        handle
+    };
+
+
+    void* sharedBuf = nullptr;
+    alloc_desc.pNext = &import_fd;
+    result = zeMemAllocDevice(context, &alloc_desc, bufSize, 1, pDevice, &sharedBuf);
+    CHECK_ZE_STATUS(result, "zeMemAllocDevice");
+
+    ze_memory_allocation_properties_t props = {};
+    result = zeMemGetAllocProperties(context, sharedBuf, &props, nullptr);
+    CHECK_ZE_STATUS(result, "zeMemGetAllocProperties");
+    printf("MemAllocINFO: memory = %p, stype = %d, pNext = 0x%08x, type = %d, id = 0x%08x, pagesize = %d\n", 
+        sharedBuf, props.stype, (uint64_t)props.pNext, props.type, props.id, props.pageSize);
+    
+    return sharedBuf;
 }
