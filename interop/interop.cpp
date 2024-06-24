@@ -21,8 +21,10 @@ int main(int argc, char** argv)
     oclContext oclctx;
     oclctx.init(0);
 
-    lzContext lzctx;
-    lzctx.initZe(0);
+    int handle = oclctx.createHandle(1024);
+
+    // lzContext lzctx;
+    // lzctx.initZe(0);
 
     return 0;
 }

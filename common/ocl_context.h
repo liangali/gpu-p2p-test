@@ -2,6 +2,8 @@
 
 #include "common.h"
 
+
+
 class oclContext
 {
 private:
@@ -23,4 +25,6 @@ public:
     void readUSM(void* ptr, std::vector<uint32_t> &outBuf, size_t size);
     void freeUSM(void* ptr);
     void runKernel(char* programFile, char* kernelName, void *ptr0, void *ptr1, size_t elemCount);
+
+    int createHandle(size_t size);
 };

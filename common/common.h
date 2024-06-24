@@ -14,6 +14,8 @@
 #include <CL/cl.h>
 #include <CL/cl_ext.h>
 
+#define CL_MEM_ALLOCATION_HANDLE_INTEL 0x10050
+
 static std::map<int, std::string> oclErrorCode =
 {
     {0, "CL_SUCCESS"},
