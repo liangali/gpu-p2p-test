@@ -150,11 +150,11 @@ int oclContext::createHandle(size_t size)
 {
     cl_int err;
         
-    cl_mem clBuffer = clCreateBuffer(context_, CL_MEM_READ_WRITE, size, nullptr, &err);
+    cl_mem clbuf = clCreateBuffer(context_, CL_MEM_READ_WRITE, size, nullptr, &err);
     CHECK_OCL_ERROR_EXIT(err, "clCreateBuffer");
 
-    int nativeHandle;
-    err = clGetMemObjectInfo(clBuffer, CL_MEM_ALLOCATION_HANDLE_INTEL, sizeof(nativeHandle), &nativeHandle, NULL);
+    uint64_t nativeHandle;
+    err = clGetMemObjectInfo(clbuf, CL_MEM_ALLOCATION_HANDLE_INTEL, sizeof(nativeHandle), &nativeHandle, NULL);
     CHECK_OCL_ERROR(err, "clGetMemObjectInfo - CL_MEM_ALLOCATION_HANDLE_INTEL failed");
     printf("MemINFO: CL_MEM_ALLOCATION_HANDLE_INTEL = 0x%lx\n", nativeHandle);
 
