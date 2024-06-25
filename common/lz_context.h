@@ -51,24 +51,23 @@ private:
     std::vector<char> kernelSpvBin;
     ze_module_handle_t module = nullptr;
     ze_kernel_handle_t function = nullptr;
-    
+
     ze_device_handle_t findDevice(ze_driver_handle_t pDriver, ze_device_type_t type, int devIdx);
     void initTimeStamp();
     int readKernel();
     int initKernel();
-    
 
 public:
     lzContext(/* args */);
     ~lzContext();
 
-    ze_device_handle_t device() {return pDevice;};
+    ze_device_handle_t device() { return pDevice; };
 
     int initZe(int devIdx);
-    void* initBuffer (size_t elem_count, int offset);
-    void copyBuffer(std::vector<uint32_t> &hostBuf, void* devBuf, size_t elemCount);
-    void runKernel(char* spvFile, char* funcName, void* remoteBuf, void* devBuf, size_t elemCount);
-
-    void* creatBufferFromHandle(uint64_t handle, size_t bufSize);
+    void *createBuffer(size_t elem_count, int offset);
+    void readBuffer(std::vector<uint32_t> &hostDst, void *devSrc, size_t size);
+    void writeBuffer(std::vector<uint32_t> hostSrc, void *devDst, size_t size);
+    void runKernel(char *spvFile, char *funcName, void *remoteBuf, void *devBuf, size_t elemCount);
+    void *createFromHandle(uint64_t handle, size_t bufSize);
+    void printBuffer(void* ptr, size_t count = 16);
 };
-

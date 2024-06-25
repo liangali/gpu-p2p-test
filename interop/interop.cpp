@@ -5,37 +5,29 @@
 #include "ocl_context.h"
 #include "lz_context.h"
 
-void printBuf(std::vector<uint32_t> &buf, int size)
+int main(int argc, char **argv)
 {
-    for (int i = 0; i < size; i++) {
-        printf("%d, ", buf[i]);
-        if (i && i % 16 == 0)
-            printf("\n");
-    }  
-    printf("\n");
-}
+    size_t elemCount = 1024 * 1024;
+    std::vector<uint32_t> initBuf(elemCount, 0);
+    for (size_t i = 0; i < elemCount; i++)
+        initBuf[i] = (i % 1024);
 
-
-int main(int argc, char** argv) 
-{
-    size_t elemCount = 1024;
-
+    // initialize opencl
     oclContext oclctx;
     oclctx.init(0);
 
-    cl_mem clBuffer = oclctx.initBuffer(elemCount, 0);
-    std::vector<uint32_t> hostBuf0(elemCount, 0);
-    oclctx.readBuffer(clBuffer, hostBuf0, elemCount * sizeof(uint32_t));
-    printBuf(hostBuf0, 16);
-    uint64_t handle = oclctx.clBufToHandle(clBuffer);
-    
+    // initialize level-zero
     lzContext lzctx;
     lzctx.initZe(0);
 
-    void* lzptr = lzctx.creatBufferFromHandle(handle, elemCount * sizeof(uint32_t));
-    std::vector<uint32_t> hostBuf1(elemCount, 0);
-    lzctx.copyBuffer(hostBuf1, lzptr, elemCount);
-    printBuf(hostBuf1, 16);
+    // create opencl buffer and derive dma-buf handle from it
+    cl_mem clBuffer = oclctx.createBuffer(elemCount * sizeof(uint32_t), initBuf);
+    oclctx.printBuffer(clBuffer);
+    uint64_t handle = oclctx.deriveHandle(clBuffer);
+
+    // create level-zero device memory from the handle
+    void *lzptr = lzctx.createFromHandle(handle, elemCount * sizeof(uint32_t));
+    lzctx.printBuffer(lzptr);
 
     oclctx.freeBuffer(clBuffer);
 

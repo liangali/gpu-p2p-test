@@ -194,14 +194,14 @@ int lzContext::initZe(int devIdx)
     return 0;
 }
 
-void *lzContext::initBuffer(size_t elemCount, int offset)
+void *lzContext::createBuffer(size_t elemCount, int offset)
 {
     ze_result_t result;
-    void* devBuf = nullptr;
+    void *devBuf = nullptr;
 
     std::vector<uint32_t> hostBuf(elemCount, 0);
     for (size_t i = 0; i < elemCount; i++)
-        hostBuf[i] = offset + (i%1024);
+        hostBuf[i] = offset + (i % 1024);
 
     ze_device_mem_alloc_desc_t device_desc = {
         ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC,
@@ -232,11 +232,31 @@ void *lzContext::initBuffer(size_t elemCount, int offset)
     return devBuf;
 }
 
-void lzContext::copyBuffer(std::vector<uint32_t> &hostBuf, void* devBuf, size_t elemCount)
+void lzContext::readBuffer(std::vector<uint32_t> &hostDst, void *devSrc, size_t size)
 {
     ze_result_t result;
 
-    result = zeCommandListAppendMemoryCopy(command_list, hostBuf.data(), devBuf, elemCount * sizeof(uint32_t), nullptr, 0, nullptr);
+    result = zeCommandListAppendMemoryCopy(command_list, hostDst.data(), devSrc, size, nullptr, 0, nullptr);
+    CHECK_ZE_STATUS(result, "zeCommandListAppendMemoryCopy");
+
+    result = zeCommandListClose(command_list);
+    CHECK_ZE_STATUS(result, "zeCommandListClose");
+
+    result = zeCommandQueueExecuteCommandLists(command_queue, 1, &command_list, nullptr);
+    CHECK_ZE_STATUS(result, "zeCommandQueueExecuteCommandLists");
+
+    result = zeCommandQueueSynchronize(command_queue, UINT64_MAX);
+    CHECK_ZE_STATUS(result, "zeCommandQueueSynchronize");
+
+    result = zeCommandListReset(command_list);
+    CHECK_ZE_STATUS(result, "zeCommandListReset");
+}
+
+void lzContext::writeBuffer(std::vector<uint32_t> hostSrc, void *devDst, size_t size)
+{
+    ze_result_t result;
+
+    result = zeCommandListAppendMemoryCopy(command_list, devDst, hostSrc.data(), size, nullptr, 0, nullptr);
     CHECK_ZE_STATUS(result, "zeCommandListAppendMemoryCopy");
 
     result = zeCommandListClose(command_list);
@@ -311,7 +331,7 @@ int lzContext::initKernel()
     return 0;
 }
 
-void lzContext::runKernel(char *spvFile, char *funcName, void *remoteBuf, void* devBuf, size_t elemCount)
+void lzContext::runKernel(char *spvFile, char *funcName, void *remoteBuf, void *devBuf, size_t elemCount)
 {
     ze_result_t result;
 
@@ -362,39 +382,48 @@ void lzContext::runKernel(char *spvFile, char *funcName, void *remoteBuf, void* 
               << "\ttimerResolution: " << std::dec << timerResolution << " ns\n"
               << "\tKernel duration : " << std::dec << kernelDuration << " cycles\n"
               << "\tKernel Time: " << kernelDuration * timerResolution / 1000.0 << " us\n";
-    
+
     double gpuKernelTime = kernelDuration * timerResolution / 1000.0;
     double bandWidth = elemCount * sizeof(uint32_t) / (gpuKernelTime / 1e6) / 1e9;
     printf("#### gpuKernelTime = %f, elemCount = %d, Bandwidth = %f GB/s\n", gpuKernelTime, elemCount, bandWidth);
 }
 
-void* lzContext::creatBufferFromHandle(uint64_t handle, size_t bufSize)
+void *lzContext::createFromHandle(uint64_t handle, size_t bufSize)
 {
     ze_result_t result;
-    ze_device_mem_alloc_desc_t alloc_desc = {
-        ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC,
-        nullptr,
-        0, // flags
-        0  // ordinal
-    };
-    ze_external_memory_import_fd_t import_fd = {
-        ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMPORT_FD,
-        nullptr, // pNext
-        ZE_EXTERNAL_MEMORY_TYPE_FLAG_DMA_BUF,
-        handle
-    };
+    printf("handle = %d, bufSize = %d\n", handle, bufSize);
 
-
-    void* sharedBuf = nullptr;
+    ze_external_memory_import_fd_t import_fd = {};
+    import_fd.stype = ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMPORT_FD;
+    import_fd.flags = ZE_EXTERNAL_MEMORY_TYPE_FLAG_DMA_BUF;
+    import_fd.fd = handle;
+    ze_device_mem_alloc_desc_t alloc_desc = {};
+    alloc_desc.stype = ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC;
     alloc_desc.pNext = &import_fd;
+
+    void *sharedBuf = nullptr;
     result = zeMemAllocDevice(context, &alloc_desc, bufSize, 1, pDevice, &sharedBuf);
     CHECK_ZE_STATUS(result, "zeMemAllocDevice");
 
     ze_memory_allocation_properties_t props = {};
     result = zeMemGetAllocProperties(context, sharedBuf, &props, nullptr);
     CHECK_ZE_STATUS(result, "zeMemGetAllocProperties");
-    printf("MemAllocINFO: memory = %p, stype = %d, pNext = 0x%08x, type = %d, id = 0x%08x, pagesize = %d\n", 
-        sharedBuf, props.stype, (uint64_t)props.pNext, props.type, props.id, props.pageSize);
-    
+    printf("MemAllocINFO: memory = %p, stype = %d, pNext = 0x%08x, type = %d, id = 0x%08x, pagesize = %d\n",
+           sharedBuf, props.stype, (uint64_t)props.pNext, props.type, props.id, props.pageSize);
+
     return sharedBuf;
+}
+
+void lzContext::printBuffer(void *ptr, size_t count)
+{
+    std::vector<uint32_t> outBuf(count, 0);
+    readBuffer(outBuf, ptr, count*sizeof(uint32_t));
+
+    printf("The first %d elements in level-zero ptr = %p are: \n", count, ptr);
+    for (int i = 0; i < count; i++) {
+        printf("%d, ", outBuf[i]);
+        if (i && i % 16 == 0)
+            printf("\n");
+    }
+    printf("\n");
 }
