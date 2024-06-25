@@ -96,3 +96,66 @@ buf0 = 0xffff8081fff60000, buf1 = 0xffff8081ffdf0000
 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 
 ERROR: oclContext::runKernel, line = 138, clSetKernelArg failed! err = -50 (CL_INVALID_ARG_VALUE)
 ```
+
+interop P2P results
+
+```
+(base) gta@DUT7113ATSM:~/data/gpu_p2p_code/gpu-p2p-test/build/interop$ ./interop 
+Platform 0x5637b9daf750 has 2 GPU devices
+Created device for devIdx = 0 on Intel(R) Data Center GPU Flex 170, device = 0x5637b9daf820, contex = 0x5637b9db4b00, queue = 0x5637b8bc4070
+Platform 0x5637b9daf750 has 2 GPU devices
+Created device for devIdx = 1 on Intel(R) Data Center GPU Flex 170, device = 0x5637b9db1c00, contex = 0x5637b8bc5920, queue = 0x5637b9dc0460
+INFO: Enter lzContext 
+INFO: Enter lzContext 
+INFO: driver count = 1
+#### device count = [0/2], devcie_name = Intel(R) Data Center GPU Flex 170
+Found 1 device...
+Driver version: 17002962
+API version: 65539
+INFO: find device handle = 0x5637bb33af20
+INFO: driver count = 1
+#### device count = [0/2], devcie_name = Intel(R) Data Center GPU Flex 170
+#### device count = [1/2], devcie_name = Intel(R) Data Center GPU Flex 170
+Found 1 device...
+Driver version: 17002962
+API version: 65539
+INFO: find device handle = 0x5637bb342e20
+The first 16 elements in cl_mem = 0x5637bb36ac50 are: 
+0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 
+The first 16 elements in cl_mem = 0x5637bb370230 are: 
+0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 
+handle = 9, bufSize = 4194304
+MemAllocINFO: memory = 0xffff81d5ff600000, stype = 0, pNext = 0x00000000, type = 2, id = 0x00000002, pagesize = 0
+handle = 10, bufSize = 4194304
+MemAllocINFO: memory = 0xffff81ffff400000, stype = 0, pNext = 0x00000000, type = 2, id = 0x00000003, pagesize = 0
+The first 16 elements in level-zero ptr = 0xffff81d5ff600000 are: 
+0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 
+The first 16 elements in level-zero ptr = 0xffff81ffff400000 are: 
+0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 
+Kernel timestamp statistics (prior to V1.2): 
+        Global start : 3927982536 cycles
+        Kernel start: 31692 cycles
+        Kernel end: 398610 cycles
+        Global end: 3928349454 cycles
+        timerResolution: 52 ns
+        Kernel duration : 366918 cycles
+        Kernel Time: 19079.736000 us
+#### gpuKernelTime = 19079.736000, elemCount = 1048576, Bandwidth = 0.219830 GB/s
+Kernel timestamp statistics (prior to V1.2): 
+        Global start : 3928364018 cycles
+        Kernel start: 399084 cycles
+        Kernel end: 414358 cycles
+        Global end: 3928379292 cycles
+        timerResolution: 52 ns
+        Kernel duration : 15274 cycles
+        Kernel Time: 794.248000 us
+#### gpuKernelTime = 794.248000, elemCount = 1048576, Bandwidth = 5.280849 GB/s
+The first 16 elements in cl_mem = 0x5637bb36ac50 are: 
+0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 
+The first 16 elements in cl_mem = 0x5637bb370230 are: 
+0, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 
+INFO: Enter ~lzContext 
+INFO: Enter ~lzContext 
+Enter ~oclContext
+Enter ~oclContext
+```
