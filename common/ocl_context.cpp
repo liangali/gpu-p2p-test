@@ -148,11 +148,56 @@ void oclContext::runKernel(char *kernelCode, char *kernelName, void *ptr0, void 
     clReleaseProgram(program);
 }
 
+void oclContext::runKernel(char *kernelCode, char *kernelName, cl_mem buf0, cl_mem buf1, size_t elemCount)
+{
+    cl_int err;
+
+    cl_uint knlcount = 1;
+    const char *knlstrList[] = {kernelCode};
+    size_t knlsizeList[] = {strlen(kernelCode)};
+
+    cl_program program = clCreateProgramWithSource(context_, knlcount, knlstrList, knlsizeList, &err);
+    CHECK_OCL_ERROR_EXIT(err, "clCreateProgramWithSource failed");
+
+    std::string buildopt = "-cl-std=CL2.0 -cl-intel-greater-than-4GB-buffer-required";
+    err = clBuildProgram(program, 0, NULL, buildopt.c_str(), NULL, NULL);
+    if (err < 0)
+    {
+        size_t logsize = 0;
+        err = clGetProgramBuildInfo(program, device_, CL_PROGRAM_BUILD_LOG, 0, NULL, &logsize);
+        CHECK_OCL_ERROR_EXIT(err, "clGetProgramBuildInfo failed");
+
+        std::vector<char> logbuf(logsize + 1, 0);
+        err = clGetProgramBuildInfo(program, device_, CL_PROGRAM_BUILD_LOG, logsize + 1, logbuf.data(), NULL);
+        CHECK_OCL_ERROR_EXIT(err, "clGetProgramBuildInfo failed");
+        printf("%s\n", logbuf.data());
+
+        exit(1);
+    }
+
+    cl_kernel kernel = clCreateKernel(program, kernelName, &err);
+    CHECK_OCL_ERROR_EXIT(err, "clCreateKernel failed");
+
+    err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &buf0);
+    CHECK_OCL_ERROR_EXIT(err, "clSetKernelArg failed");
+
+    err = clSetKernelArg(kernel, 1, sizeof(cl_mem), &buf1);
+    CHECK_OCL_ERROR_EXIT(err, "clSetKernelArg failed");
+
+    size_t global_size[] = {elemCount};
+    err = clEnqueueNDRangeKernel(queue_, kernel, 1, nullptr, global_size, nullptr, 0, nullptr, nullptr);
+    CHECK_OCL_ERROR_EXIT(err, "clEnqueueNDRangeKernel failed");
+    clFinish(queue_);
+
+    clReleaseKernel(kernel);
+    clReleaseProgram(program);
+}
+
 cl_mem oclContext::createBuffer(size_t size, const std::vector<uint32_t> &inbuf)
 {
     cl_int err;
 
-    cl_mem clbuf = clCreateBuffer(context_, CL_MEM_READ_WRITE, size, nullptr, &err);
+    cl_mem clbuf = clCreateBuffer(context_, CL_MEM_READ_WRITE | CL_MEM_ALLOW_UNRESTRICTED_SIZE_INTEL, size, nullptr, &err);
     CHECK_OCL_ERROR_EXIT(err, "clCreateBuffer");
 
     if (!inbuf.empty())
@@ -176,10 +221,10 @@ uint64_t oclContext::deriveHandle(cl_mem clbuf)
     return nativeHandle;
 }
 
-void oclContext::readBuffer(cl_mem clbuf, std::vector<uint32_t> &outBuf, size_t size)
+void oclContext::readBuffer(cl_mem clbuf, std::vector<uint32_t> &outBuf, size_t size, size_t offset)
 {
     cl_int err;
-    err = clEnqueueReadBuffer(queue_, clbuf, CL_TRUE, 0, size, outBuf.data(), 0, NULL, NULL);
+    err = clEnqueueReadBuffer(queue_, clbuf, CL_TRUE, offset, size, outBuf.data(), 0, NULL, NULL);
     CHECK_OCL_ERROR_EXIT(err, "clEnqueueReadBuffer failed");
     clFinish(queue_);
 }
@@ -189,10 +234,10 @@ void oclContext::freeBuffer(cl_mem clbuf)
     clReleaseMemObject(clbuf);
 }
 
-void oclContext::printBuffer(cl_mem clbuf, size_t count)
+void oclContext::printBuffer(cl_mem clbuf, size_t count, size_t offset)
 {
     std::vector<uint32_t> outBuf(count, 0);
-    readBuffer(clbuf, outBuf, count*sizeof(uint32_t));
+    readBuffer(clbuf, outBuf, count*sizeof(uint32_t), offset);
 
     printf("The first %d elements in cl_mem = %p are: \n", count, clbuf);
     for (int i = 0; i < count; i++) {

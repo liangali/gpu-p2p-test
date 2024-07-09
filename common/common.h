@@ -15,6 +15,7 @@
 #include <CL/cl_ext.h>
 
 #define CL_MEM_ALLOCATION_HANDLE_INTEL 0x10050
+#define CL_MEM_ALLOW_UNRESTRICTED_SIZE_INTEL (1 << 23)
 
 static std::map<int, std::string> oclErrorCode =
 {
