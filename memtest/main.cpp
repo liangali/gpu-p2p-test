@@ -34,12 +34,12 @@ int main(int argc, char** argv)
 
     cl_mem buf0 = oclctx.createBuffer(elemCount * sizeof(uint32_t), initBuf);
 
-    size_t sizeInBytes = 1.5 * 1024 * 1024 * 1024 * sizeof(uint32_t);
+    size_t sizeInBytes = 1.5 * 1024 * 1024 * 1024 * sizeof(uint32_t); // allocate 6GB GPU memory
     cl_mem buf1 = oclctx.createBuffer(sizeInBytes);
     printf("buf size = %lld, buf handle = %p\n", sizeInBytes, buf1);
 
-    oclctx.runKernel(test_kernel_code, "test_kernel", buf0, buf1, elemCount);
-    oclctx.runKernel(test_kernel_code, "test_kernel2", buf0, buf1, elemCount);
+    oclctx.runKernel(test_kernel_code, "test_kernel", buf0, buf1, elemCount); // copy 4MB data (buf0) to 6GB memory (buf1) at 4GB offset
+    oclctx.runKernel(test_kernel_code, "test_kernel2", buf0, buf1, elemCount); // read back the data from buf1 to buf0
     oclctx.printBuffer(buf0, 16, 0);
 
     oclctx.freeBuffer(buf0);
