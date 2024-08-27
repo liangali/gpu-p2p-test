@@ -110,26 +110,26 @@ int ocl_p2p()
     oclctx0.init(0);
     oclctx1.init(1);
 
-    // create two opencl buffers on the device memory of GPU0 and GPU1 respectively
+    // create clbuf0 on GPU0 and clbuf1 on GPU1
     cl_mem clbuf0 = oclctx0.createBuffer(elemCount * sizeof(uint32_t), initBuf);
     cl_mem clbuf1 = oclctx1.createBuffer(elemCount * sizeof(uint32_t), initBuf);
     oclctx0.printBuffer(clbuf0);
     oclctx1.printBuffer(clbuf1);
 
-    // derive the dma-buf handles from opencl buffers
+    // derive the handle from clbuf1
     uint64_t handle1 = oclctx1.deriveHandle(clbuf1);
 
-    // create clbuf2 from handle1 on ctx0
+    // create clbuf2 from handle1
     cl_mem clbuf2 = oclctx0.createFromHandle(handle1, elemCount * sizeof(uint32_t));
     
-    // ctx0 launch a kernel on GPU0 to write data to remote buffer clbuf2 on GPU1
+    // use oclctx0 to launch a kernel on GPU0 to write data to remote buffer clbuf2 on GPU1
     oclctx0.runKernel(write_kernel_code, "write_to_remote", clbuf0, clbuf2, elemCount);
     oclctx0.printBuffer(clbuf2);
 
-    // use oclctx1 to read the content of original clbuf1
+    // use oclctx1 to read the content of the original clbuf1
     oclctx1.printBuffer(clbuf1);
 
-    // ctx0 launch a kernel on GPU0 to read data from remote buffer clbuf2 on GPU1
+    // use oclctx0 to launch a kernel on GPU0 to read data from remote buffer clbuf2 on GPU1
     oclctx0.runKernel(read_kernel_code, "read_from_remote", clbuf0, clbuf2, elemCount);
     oclctx0.printBuffer(clbuf0);
 
@@ -138,6 +138,7 @@ int ocl_p2p()
 
     return 0;
 }
+
 
 int main(int argc, char **argv)
 {
