@@ -221,6 +221,23 @@ uint64_t oclContext::deriveHandle(cl_mem clbuf)
     return nativeHandle;
 }
 
+cl_mem oclContext::createFromHandle(uint64_t handle, size_t size)
+{
+    cl_int err;
+
+	// Create extMemBuffer of type cl_mem from fd. 
+	cl_mem_properties extMemProperties[] = {
+        (cl_mem_properties)CL_EXTERNAL_MEMORY_HANDLE_DMA_BUF_KHR, 
+		(cl_mem_properties)handle,
+		0 
+    }; 
+
+    cl_mem extMemBuffer = clCreateBufferWithProperties(context_, extMemProperties, 0, size, NULL, &err);
+    CHECK_OCL_ERROR(err, "clCreateBufferWithProperties failed");
+
+    return extMemBuffer;
+}
+
 void oclContext::readBuffer(cl_mem clbuf, std::vector<uint32_t> &outBuf, size_t size, size_t offset)
 {
     cl_int err;

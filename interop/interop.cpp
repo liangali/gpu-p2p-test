@@ -1,9 +1,26 @@
+
 #include <CL/cl.h>
 #include <iostream>
 #include <vector>
 
 #include "ocl_context.h"
 #include "lz_context.h"
+
+char read_kernel_code[] = " \
+kernel void read_from_remote(global int *src1, global int *src2) \
+{ \
+  const int id = get_global_id(0); \
+  src1[id] = src2[id] * 3; \
+} \
+";
+
+char write_kernel_code[] = " \
+kernel void write_to_remote(global int *src1, global int *src2)  \
+{ \
+  const int id = get_global_id(0); \
+  src2[id] = src1[id] * 5; \
+} \
+";
 
 void simple_interop()
 {
@@ -32,10 +49,8 @@ void simple_interop()
     oclctx.freeBuffer(clBuffer);
 }
 
-int main(int argc, char **argv)
+int ocl_l0_interop_p2p()
 {
-    // simple_interop();
-
     size_t elemCount = 1024 * 1024;
     std::vector<uint32_t> initBuf(elemCount, 0);
     for (size_t i = 0; i < elemCount; i++)
@@ -79,6 +94,57 @@ int main(int argc, char **argv)
 
     oclctx0.freeBuffer(clbuf0);
     oclctx1.freeBuffer(clbuf1);
+
+    return 0;
+}
+
+int ocl_p2p()
+{
+    size_t elemCount = 1024 * 1024;
+    std::vector<uint32_t> initBuf(elemCount, 0);
+    for (size_t i = 0; i < elemCount; i++)
+        initBuf[i] = (i % 1024);
+
+    // initialize two opencl contexts, oclctx0 on GPU0 and oclctx1 on GPU1
+    oclContext oclctx0, oclctx1;
+    oclctx0.init(0);
+    oclctx1.init(1);
+
+    // create two opencl buffers on the device memory of GPU0 and GPU1 respectively
+    cl_mem clbuf0 = oclctx0.createBuffer(elemCount * sizeof(uint32_t), initBuf);
+    cl_mem clbuf1 = oclctx1.createBuffer(elemCount * sizeof(uint32_t), initBuf);
+    oclctx0.printBuffer(clbuf0);
+    oclctx1.printBuffer(clbuf1);
+
+    // derive the dma-buf handles from opencl buffers
+    uint64_t handle1 = oclctx1.deriveHandle(clbuf1);
+
+    // create clbuf2 from handle1 on ctx0
+    cl_mem clbuf2 = oclctx0.createFromHandle(handle1, elemCount * sizeof(uint32_t));
+    
+    // ctx0 launch a kernel on GPU0 to write data to remote buffer clbuf2 on GPU1
+    oclctx0.runKernel(write_kernel_code, "write_to_remote", clbuf0, clbuf2, elemCount);
+    oclctx0.printBuffer(clbuf2);
+
+    // use oclctx1 to read the content of original clbuf1
+    oclctx1.printBuffer(clbuf1);
+
+    // ctx0 launch a kernel on GPU0 to read data from remote buffer clbuf2 on GPU1
+    oclctx0.runKernel(read_kernel_code, "read_from_remote", clbuf0, clbuf2, elemCount);
+    oclctx0.printBuffer(clbuf0);
+
+    oclctx0.freeBuffer(clbuf0);
+    oclctx1.freeBuffer(clbuf1);
+
+    return 0;
+}
+
+int main(int argc, char **argv)
+{
+    //simple_interop();
+    //ocl_l0_interop_p2p();
+
+    ocl_p2p();
 
     return 0;
 }
