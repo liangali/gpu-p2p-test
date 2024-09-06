@@ -9,6 +9,8 @@ private:
     cl_device_id device_ = nullptr;
     cl_context context_ = nullptr;
     cl_command_queue queue_ = nullptr;
+    cl_program program_ = nullptr;
+    cl_kernel kernel_ = nullptr;
 
 public:
     oclContext(/* args */);
@@ -22,8 +24,8 @@ public:
     void *initUSM(size_t elem_count, int offset);
     void readUSM(void *ptr, std::vector<uint32_t> &outBuf, size_t size);
     void freeUSM(void *ptr);
-    void runKernel(char *programFile, char *kernelName, void *ptr0, void *ptr1, size_t elemCount);
-    void runKernel(char *programFile, char *kernelName, cl_mem buf0, cl_mem buf1, size_t elemCount);
+    void runKernel(char *programFile, char *kernelName, void *ptr0, void *ptr1, size_t elemCount, cl_event* se = nullptr, cl_event* we = nullptr, int sync = 2);
+    void runKernel(char *programFile, char *kernelName, cl_mem buf0, cl_mem buf1, size_t elemCount, cl_event* se = nullptr, cl_event* we = nullptr, int sync = 2);
 
     cl_mem createBuffer(size_t size, const std::vector<uint32_t> &inbuf = std::vector<uint32_t>{});
     uint64_t deriveHandle(cl_mem clbuf);
@@ -31,4 +33,5 @@ public:
     void readBuffer(cl_mem clbuf, std::vector<uint32_t> &outBuf, size_t size, size_t offset);
     void freeBuffer(cl_mem clbuf);
     void printBuffer(cl_mem clbuf, size_t count = 16, size_t offset = 0);
+    size_t validateBuffer(cl_mem clbuf, size_t count, int factor);
 };

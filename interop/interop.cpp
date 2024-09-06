@@ -18,7 +18,7 @@ char write_kernel_code[] = " \
 kernel void write_to_remote(global int *src1, global int *src2)  \
 { \
   const int id = get_global_id(0); \
-  src2[id] = src1[id] * 5; \
+  src2[id] = src1[id] * 2; \
 } \
 ";
 
@@ -83,10 +83,10 @@ int ocl_l0_interop_p2p()
     lzctx1.printBuffer(lzptr1);
 
     // run p2p data transfer kernel: GPU0 read data from GPU1
-    lzctx0.runKernel("../../lz_p2p/test_kernel_dg2.spv", "local_read_from_remote", lzptr1, lzptr0, elemCount);
+    lzctx0.runKernel("../../lz_p2p/test_kernel_dg2.spv", "read_from_remote", lzptr1, lzptr0, elemCount);
 
     // run p2p data transfer kernel: GPU0 write data to GPU1
-    lzctx0.runKernel("../../lz_p2p/test_kernel_dg2.spv", "local_write_to_remote", lzptr1, lzptr0, elemCount);
+    lzctx0.runKernel("../../lz_p2p/test_kernel_dg2.spv", "write_to_remote", lzptr1, lzptr0, elemCount);
 
     // print the content of the original opencl buffers, the data was changed after above level-zero kernel execution.
     oclctx0.printBuffer(clbuf0);
@@ -98,9 +98,10 @@ int ocl_l0_interop_p2p()
     return 0;
 }
 
-int ocl_p2p()
+int ocl_p2p(int argc, char **argv)
 {
-    size_t elemCount = 1024 * 1024;
+    int sync = (argc == 2) ? atoi(argv[1]) : 0; 
+    size_t elemCount = 16 * 1024 * 1024;
     std::vector<uint32_t> initBuf(elemCount, 0);
     for (size_t i = 0; i < elemCount; i++)
         initBuf[i] = (i % 1024);
@@ -113,6 +114,7 @@ int ocl_p2p()
     // create clbuf0 on GPU0 and clbuf1 on GPU1
     cl_mem clbuf0 = oclctx0.createBuffer(elemCount * sizeof(uint32_t), initBuf);
     cl_mem clbuf1 = oclctx1.createBuffer(elemCount * sizeof(uint32_t), initBuf);
+    cl_mem clbuf3 = oclctx1.createBuffer(elemCount * sizeof(uint32_t), initBuf);
     oclctx0.printBuffer(clbuf0);
     oclctx1.printBuffer(clbuf1);
 
@@ -121,17 +123,21 @@ int ocl_p2p()
 
     // create clbuf2 from handle1
     cl_mem clbuf2 = oclctx0.createFromHandle(handle1, elemCount * sizeof(uint32_t));
+
+    cl_event event;
     
     // use oclctx0 to launch a kernel on GPU0 to write data to remote buffer clbuf2 on GPU1
-    oclctx0.runKernel(write_kernel_code, "write_to_remote", clbuf0, clbuf2, elemCount);
-    oclctx0.printBuffer(clbuf2);
-
+    oclctx0.runKernel(write_kernel_code, "write_to_remote", clbuf0, clbuf2, elemCount, &event, nullptr, sync); // clbuf0 * 2 --> clbuf2 (clbuf1)
+    // oclctx0.validateBuffer(clbuf2, elemCount, 2);
+    // oclctx0.printBuffer(clbuf2);
+    
     // use oclctx1 to read the content of the original clbuf1
-    oclctx1.printBuffer(clbuf1);
+    // oclctx1.printBuffer(clbuf1);
 
     // use oclctx0 to launch a kernel on GPU0 to read data from remote buffer clbuf2 on GPU1
-    oclctx0.runKernel(read_kernel_code, "read_from_remote", clbuf0, clbuf2, elemCount);
-    oclctx0.printBuffer(clbuf0);
+    oclctx1.runKernel(read_kernel_code, "read_from_remote", clbuf3, clbuf1, elemCount, nullptr, &event, sync); // clbuf1 * 3 --> clbuf3
+    oclctx1.validateBuffer(clbuf3, elemCount, 6);
+    oclctx1.printBuffer(clbuf3);
 
     oclctx0.freeBuffer(clbuf0);
     oclctx1.freeBuffer(clbuf1);
@@ -145,7 +151,7 @@ int main(int argc, char **argv)
     //simple_interop();
     //ocl_l0_interop_p2p();
 
-    ocl_p2p();
+    ocl_p2p(argc, argv);
 
     return 0;
 }

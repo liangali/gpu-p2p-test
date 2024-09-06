@@ -9,6 +9,8 @@ oclContext::~oclContext()
 {
     printf("Enter %s\n", __FUNCTION__);
 
+    clReleaseKernel(kernel_);
+    clReleaseProgram(program_);
     clReleaseCommandQueue(queue_);
     clReleaseContext(context_);
 }
@@ -103,7 +105,7 @@ void oclContext::freeUSM(void *ptr)
     CHECK_OCL_ERROR(err, "clMemBlockingFreeINTEL");
 }
 
-void oclContext::runKernel(char *kernelCode, char *kernelName, void *ptr0, void *ptr1, size_t elemCount)
+void oclContext::runKernel(char *kernelCode, char *kernelName, void *ptr0, void *ptr1, size_t elemCount, cl_event* se, cl_event* we, int sync)
 {
     cl_int err;
 
@@ -111,44 +113,45 @@ void oclContext::runKernel(char *kernelCode, char *kernelName, void *ptr0, void 
     const char *knlstrList[] = {kernelCode};
     size_t knlsizeList[] = {strlen(kernelCode)};
 
-    cl_program program = clCreateProgramWithSource(context_, knlcount, knlstrList, knlsizeList, &err);
+    program_ = clCreateProgramWithSource(context_, knlcount, knlstrList, knlsizeList, &err);
     CHECK_OCL_ERROR_EXIT(err, "clCreateProgramWithSource failed");
 
     std::string buildopt = "-cl-std=CL2.0";
-    err = clBuildProgram(program, 0, NULL, buildopt.c_str(), NULL, NULL);
+    err = clBuildProgram(program_, 0, NULL, buildopt.c_str(), NULL, NULL);
     if (err < 0)
     {
         size_t logsize = 0;
-        err = clGetProgramBuildInfo(program, device_, CL_PROGRAM_BUILD_LOG, 0, NULL, &logsize);
+        err = clGetProgramBuildInfo(program_, device_, CL_PROGRAM_BUILD_LOG, 0, NULL, &logsize);
         CHECK_OCL_ERROR_EXIT(err, "clGetProgramBuildInfo failed");
 
         std::vector<char> logbuf(logsize + 1, 0);
-        err = clGetProgramBuildInfo(program, device_, CL_PROGRAM_BUILD_LOG, logsize + 1, logbuf.data(), NULL);
+        err = clGetProgramBuildInfo(program_, device_, CL_PROGRAM_BUILD_LOG, logsize + 1, logbuf.data(), NULL);
         CHECK_OCL_ERROR_EXIT(err, "clGetProgramBuildInfo failed");
         printf("%s\n", logbuf.data());
 
         exit(1);
     }
 
-    cl_kernel kernel = clCreateKernel(program, kernelName, &err);
+    kernel_ = clCreateKernel(program_, kernelName, &err);
     CHECK_OCL_ERROR_EXIT(err, "clCreateKernel failed");
 
-    err = clSetKernelArgMemPointerINTEL(kernel, 0, ptr0);
+    err = clSetKernelArgMemPointerINTEL(kernel_, 0, ptr0);
     CHECK_OCL_ERROR_EXIT(err, "clSetKernelArg failed");
 
-    err = clSetKernelArgMemPointerINTEL(kernel, 1, ptr1);
+    err = clSetKernelArgMemPointerINTEL(kernel_, 1, ptr1);
     CHECK_OCL_ERROR_EXIT(err, "clSetKernelArg failed");
 
     size_t global_size[] = {elemCount};
-    err = clEnqueueNDRangeKernel(queue_, kernel, 1, nullptr, global_size, nullptr, 0, nullptr, nullptr);
+    err = clEnqueueNDRangeKernel(queue_, kernel_, 1, nullptr, global_size, nullptr, (we == nullptr) ? 0 : 1, we, se);
     CHECK_OCL_ERROR_EXIT(err, "clEnqueueNDRangeKernel failed");
-    clFinish(queue_);
 
-    clReleaseKernel(kernel);
-    clReleaseProgram(program);
+    if (sync == 1)
+        clFlush(queue_);
+    else if (sync == 2)
+        clFinish(queue_);
 }
 
-void oclContext::runKernel(char *kernelCode, char *kernelName, cl_mem buf0, cl_mem buf1, size_t elemCount)
+void oclContext::runKernel(char *kernelCode, char *kernelName, cl_mem buf0, cl_mem buf1, size_t elemCount, cl_event* se, cl_event* we, int sync)
 {
     cl_int err;
 
@@ -156,41 +159,42 @@ void oclContext::runKernel(char *kernelCode, char *kernelName, cl_mem buf0, cl_m
     const char *knlstrList[] = {kernelCode};
     size_t knlsizeList[] = {strlen(kernelCode)};
 
-    cl_program program = clCreateProgramWithSource(context_, knlcount, knlstrList, knlsizeList, &err);
+    program_ = clCreateProgramWithSource(context_, knlcount, knlstrList, knlsizeList, &err);
     CHECK_OCL_ERROR_EXIT(err, "clCreateProgramWithSource failed");
 
     std::string buildopt = "-cl-std=CL2.0 -cl-intel-greater-than-4GB-buffer-required";
-    err = clBuildProgram(program, 0, NULL, buildopt.c_str(), NULL, NULL);
+    err = clBuildProgram(program_, 0, NULL, buildopt.c_str(), NULL, NULL);
     if (err < 0)
     {
         size_t logsize = 0;
-        err = clGetProgramBuildInfo(program, device_, CL_PROGRAM_BUILD_LOG, 0, NULL, &logsize);
+        err = clGetProgramBuildInfo(program_, device_, CL_PROGRAM_BUILD_LOG, 0, NULL, &logsize);
         CHECK_OCL_ERROR_EXIT(err, "clGetProgramBuildInfo failed");
 
         std::vector<char> logbuf(logsize + 1, 0);
-        err = clGetProgramBuildInfo(program, device_, CL_PROGRAM_BUILD_LOG, logsize + 1, logbuf.data(), NULL);
+        err = clGetProgramBuildInfo(program_, device_, CL_PROGRAM_BUILD_LOG, logsize + 1, logbuf.data(), NULL);
         CHECK_OCL_ERROR_EXIT(err, "clGetProgramBuildInfo failed");
         printf("%s\n", logbuf.data());
 
         exit(1);
     }
 
-    cl_kernel kernel = clCreateKernel(program, kernelName, &err);
+    kernel_ = clCreateKernel(program_, kernelName, &err);
     CHECK_OCL_ERROR_EXIT(err, "clCreateKernel failed");
 
-    err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &buf0);
+    err = clSetKernelArg(kernel_, 0, sizeof(cl_mem), &buf0);
     CHECK_OCL_ERROR_EXIT(err, "clSetKernelArg failed");
 
-    err = clSetKernelArg(kernel, 1, sizeof(cl_mem), &buf1);
+    err = clSetKernelArg(kernel_, 1, sizeof(cl_mem), &buf1);
     CHECK_OCL_ERROR_EXIT(err, "clSetKernelArg failed");
 
     size_t global_size[] = {elemCount};
-    err = clEnqueueNDRangeKernel(queue_, kernel, 1, nullptr, global_size, nullptr, 0, nullptr, nullptr);
+    err = clEnqueueNDRangeKernel(queue_, kernel_, 1, nullptr, global_size, nullptr, (we == nullptr) ? 0 : 1, we, se);
     CHECK_OCL_ERROR_EXIT(err, "clEnqueueNDRangeKernel failed");
-    clFinish(queue_);
 
-    clReleaseKernel(kernel);
-    clReleaseProgram(program);
+    if (sync == 1)
+        clFlush(queue_);
+    else if (sync == 2)
+        clFinish(queue_);
 }
 
 cl_mem oclContext::createBuffer(size_t size, const std::vector<uint32_t> &inbuf)
@@ -263,4 +267,23 @@ void oclContext::printBuffer(cl_mem clbuf, size_t count, size_t offset)
             printf("\n");
     }
     printf("\n");
+}
+
+size_t oclContext::validateBuffer(cl_mem clbuf, size_t count, int factor)
+{
+    size_t mismatchCount = 0;
+    std::vector<uint32_t> outBuf(count, 0);
+    readBuffer(clbuf, outBuf, count*sizeof(uint32_t), 0);
+
+    for (int i = 0; i < count; i++) {
+        if (outBuf[i] != (i%1024)*factor)
+            mismatchCount++;
+    }
+
+    if (mismatchCount)
+        printf("!!!! Validation failed !!!! count = %d, factor = %d, mismatch percentage = %f \n", count, factor, (float)mismatchCount/float(count));
+    else
+        printf("#### Validation passed #### count = %d, factor = %d\n", count, factor);
+    
+    return mismatchCount;
 }
