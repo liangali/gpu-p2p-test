@@ -174,8 +174,8 @@ int ocl_p2p_multi_devie_ctx(int argc, char **argv)
     cl_event event;
     
     // use oclctx0 to launch a kernel on GPU0 to write data to remote buffer clbuf2 on GPU1
-    // oclctx0.runKernel(write_kernel_code, "write_to_remote", clbuf0, clbuf2_shared, elemCount, &event, nullptr, sync); // clbuf0 * 2 --> clbuf2
-    oclctx0.runKernel(write_kernel_code, "write_to_remote", clbuf0, clbuf1, elemCount, &event, nullptr, sync); // clbuf0 * 2 --> clbuf1
+    oclctx0.runKernel(write_kernel_code, "write_to_remote", clbuf0, clbuf2_shared, elemCount, &event, nullptr, sync); // clbuf0 * 2 --> clbuf2
+    // oclctx0.runKernel(write_kernel_code, "write_to_remote", clbuf0, clbuf1, elemCount, &event, nullptr, sync); // clbuf0 * 2 --> clbuf1
 
     // use oclctx0 to launch a kernel on GPU0 to read data from remote buffer clbuf2 on GPU1
     oclctx1.runKernel(read_kernel_code, "read_from_remote", clbuf3, clbuf2, elemCount, nullptr, &event, sync); // clbuf2 * 3 --> clbuf3

@@ -332,10 +332,12 @@ cl_mem oclContext::createFromHandle(uint64_t handle, size_t size)
 	cl_mem_properties extMemProperties[] = {
         (cl_mem_properties)CL_EXTERNAL_MEMORY_HANDLE_DMA_BUF_KHR, 
 		(cl_mem_properties)handle,
+        CL_MEM_DEVICE_ID_INTEL,
+        (cl_mem_properties_intel)device_,
 		0 
     }; 
 
-    cl_mem extMemBuffer = clCreateBufferWithProperties(context_, extMemProperties, 0, size, NULL, &err);
+    cl_mem extMemBuffer = clCreateBufferWithPropertiesINTEL_(context_, extMemProperties, 0, size, NULL, &err);
     CHECK_OCL_ERROR(err, "clCreateBufferWithProperties failed");
 
     return extMemBuffer;
