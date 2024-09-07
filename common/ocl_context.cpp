@@ -68,6 +68,80 @@ void oclContext::init(int devIdx)
     exit(-1);
 }
 
+void oclContext::init(std::vector<int> device_list)
+{
+    if (device_list.size() < 2) {
+        printf("ERROR: device_list must include 2 or more device index\n");
+        exit(-1);
+    }
+
+    cl_int err;
+    cl_uint num_platforms = 0;
+    err = clGetPlatformIDs(0, nullptr, &num_platforms);
+    CHECK_OCL_ERROR_EXIT(err, "clGetPlatformIDs");
+
+    std::vector<cl_platform_id> platforms(num_platforms);
+    err = clGetPlatformIDs(num_platforms, platforms.data(), nullptr);
+    CHECK_OCL_ERROR_EXIT(err, "clGetPlatformIDs");
+
+    for (const auto &platform : platforms)
+    {
+        cl_uint num_devices = 0;
+        clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 0, nullptr, &num_devices);
+
+        if (num_devices > 0)
+        {
+            platform_ = platform;
+            printf("Platform %p has %d GPU devices\n", platform_, num_devices);
+
+            if (!clCreateBufferWithPropertiesINTEL_) {
+                clCreateBufferWithPropertiesINTEL_ = (pfn_clCreateBufferWithPropertiesINTEL)clGetExtensionFunctionAddressForPlatform(platform_, "clCreateBufferWithPropertiesINTEL");
+                if (!clCreateBufferWithPropertiesINTEL_) {
+                    printf("ERROR: cannot query interface clCreateBufferWithPropertiesINTEL\n");
+                    exit(-1);
+                }
+            }
+
+            std::vector<cl_device_id> devices(num_devices);
+            err = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, num_devices, devices.data(), nullptr);
+            CHECK_OCL_ERROR_EXIT(err, "clGetDeviceIDs");
+
+            printf("all gpu devices: \n");
+            for (size_t i = 0; i < num_devices; i++) {
+                printf("gpu device index %d, cl_device_id = %p\n", i, devices[i]);
+            }
+            
+            if (num_devices < device_list.size()) {
+                printf("ERROR: available GPU device number (%d) is less than required device number (%s)\n", num_devices, device_list.size());
+                exit(-1);
+            }
+
+            for (size_t i = 0; i < device_list.size(); i++) {
+                assert(device_list[i] < num_devices);
+                devList_.push_back(devices[device_list[i]]);
+            }
+
+            device_ = devices[device_list[0]];
+
+            context_ = clCreateContext(NULL,  devList_.size(), devList_.data(), NULL, NULL, &err);
+            CHECK_OCL_ERROR_EXIT(err, "clCreateContext");
+
+            queue_ = clCreateCommandQueue(context_, device_, 0, &err);
+            CHECK_OCL_ERROR_EXIT(err, "clCreateCommandQueue");
+
+            char device_name[1024];
+            err = clGetDeviceInfo(device_, CL_DEVICE_NAME, sizeof(device_name), device_name, nullptr);
+            CHECK_OCL_ERROR_EXIT(err, "clGetDeviceInfo");
+            printf("Created device for devIdx = %d on %s, device = %p, contex = %p, queue = %p\n", device_list[0], device_name, device_, context_, queue_);
+
+            return;
+        }
+    }
+
+    printf("ERROR: cannot find OpenCL GPU device!\n");
+    exit(-1);
+}
+
 void *oclContext::initUSM(size_t elem_count, int offset)
 {
     cl_int err;
@@ -203,6 +277,31 @@ cl_mem oclContext::createBuffer(size_t size, const std::vector<uint32_t> &inbuf)
 
     cl_mem clbuf = clCreateBuffer(context_, CL_MEM_READ_WRITE | CL_MEM_ALLOW_UNRESTRICTED_SIZE_INTEL, size, nullptr, &err);
     CHECK_OCL_ERROR_EXIT(err, "clCreateBuffer");
+
+    if (!inbuf.empty())
+    {
+        err = clEnqueueWriteBuffer(queue_, clbuf, CL_TRUE, 0, size, inbuf.data(), 0, NULL, NULL);
+        CHECK_OCL_ERROR_EXIT(err, "clEnqueueWriteBuffer failed");
+
+        clFinish(queue_);
+    }
+
+    return clbuf;
+}
+
+cl_mem oclContext::createBuffer2(int devIdx, size_t size, const std::vector<uint32_t> &inbuf)
+{
+    cl_int err;
+
+    const cl_mem_properties_intel memProperties[] = {
+        CL_MEM_FLAGS,
+        CL_MEM_READ_WRITE | CL_MEM_ALLOW_UNRESTRICTED_SIZE_INTEL,
+        CL_MEM_DEVICE_ID_INTEL,
+        (cl_mem_properties_intel)devList_[devIdx],
+        0,
+    };
+    cl_mem clbuf = clCreateBufferWithPropertiesINTEL_(context_, memProperties, 0, size, nullptr, &err);
+    CHECK_OCL_ERROR_EXIT(err, "clCreateBufferWithPropertiesINTEL");
 
     if (!inbuf.empty())
     {
