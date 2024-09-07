@@ -159,29 +159,33 @@ int ocl_p2p_multi_devie_ctx(int argc, char **argv)
     oclctx1.init({1, 0});
 
     cl_mem clbuf0 = oclctx0.createBuffer2(0, elemCount * sizeof(uint32_t), initBuf);
-    cl_mem clbuf1 = oclctx1.createBuffer2(1, elemCount * sizeof(uint32_t), initBuf);
+    cl_mem clbuf1 = oclctx0.createBuffer2(0, elemCount * sizeof(uint32_t), initBuf);
+    cl_mem clbuf2 = oclctx1.createBuffer2(1, elemCount * sizeof(uint32_t), initBuf);
     cl_mem clbuf3 = oclctx1.createBuffer2(1, elemCount * sizeof(uint32_t), initBuf);
     oclctx0.printBuffer(clbuf0);
-    oclctx1.printBuffer(clbuf1);
+    oclctx1.printBuffer(clbuf2);
 
     // derive the handle from clbuf1
-    uint64_t handle1 = oclctx1.deriveHandle(clbuf1);
+    uint64_t handle2 = oclctx1.deriveHandle(clbuf2);
 
-    // create clbuf2 from handle1
-    cl_mem clbuf2 = oclctx0.createFromHandle(handle1, elemCount * sizeof(uint32_t));
+    // create clbuf2 from handle2
+    cl_mem clbuf2_shared = oclctx0.createFromHandle(handle2, elemCount * sizeof(uint32_t));
 
     cl_event event;
     
     // use oclctx0 to launch a kernel on GPU0 to write data to remote buffer clbuf2 on GPU1
-    oclctx0.runKernel(write_kernel_code, "write_to_remote", clbuf0, clbuf2, elemCount, &event, nullptr, sync); // clbuf0 * 2 --> clbuf2 (clbuf1)
+    // oclctx0.runKernel(write_kernel_code, "write_to_remote", clbuf0, clbuf2_shared, elemCount, &event, nullptr, sync); // clbuf0 * 2 --> clbuf2
+    oclctx0.runKernel(write_kernel_code, "write_to_remote", clbuf0, clbuf1, elemCount, &event, nullptr, sync); // clbuf0 * 2 --> clbuf1
 
     // use oclctx0 to launch a kernel on GPU0 to read data from remote buffer clbuf2 on GPU1
-    oclctx1.runKernel(read_kernel_code, "read_from_remote", clbuf3, clbuf1, elemCount, nullptr, &event, sync); // clbuf1 * 3 --> clbuf3
+    oclctx1.runKernel(read_kernel_code, "read_from_remote", clbuf3, clbuf2, elemCount, nullptr, &event, sync); // clbuf2 * 3 --> clbuf3
     oclctx1.validateBuffer(clbuf3, elemCount, 6);
     oclctx1.printBuffer(clbuf3);
 
     oclctx0.freeBuffer(clbuf0);
-    oclctx1.freeBuffer(clbuf1);
+    oclctx0.freeBuffer(clbuf1);
+    oclctx1.freeBuffer(clbuf2);
+    oclctx1.freeBuffer(clbuf3);
 
     return 0;
 }
