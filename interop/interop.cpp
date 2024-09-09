@@ -98,9 +98,10 @@ int ocl_l0_interop_p2p()
     return 0;
 }
 
-int ocl_p2p_host_sync(int argc, char **argv)
+int ocl_p2p_sync_host_and_event(int argc, char **argv)
 {
-    int sync = (argc == 2) ? atoi(argv[1]) : 0; 
+    int sync = (argc == 2) ? atoi(argv[1]) : 1; // sync =1, add clFlush after enqueue by default
+
     size_t elemCount = 16 * 1024 * 1024;
     std::vector<uint32_t> initBuf(elemCount, 0);
     for (size_t i = 0; i < elemCount; i++)
@@ -145,23 +146,24 @@ int ocl_p2p_host_sync(int argc, char **argv)
     return 0;
 }
 
-int ocl_p2p_multi_devie_ctx(int argc, char **argv)
+int ocl_p2p_sync_multi_devie_ctx_event(int argc, char **argv)
 {
-    int sync = (argc == 2) ? atoi(argv[1]) : 0;
+    int sync = (argc == 2) ? atoi(argv[1]) : 1; // sync =1, add clFlush after enqueue by default
+
     size_t elemCount = 16 * 1024 * 1024;
     std::vector<uint32_t> initBuf(elemCount, 0);
     for (size_t i = 0; i < elemCount; i++)
         initBuf[i] = (i % 1024);
 
-    // initialize two opencl contexts, oclctx0 on GPU0 and oclctx1 on GPU1
+    // initialize two opencl contexts
     oclContext oclctx0, oclctx1;
-    oclctx0.init({0, 1});
-    oclctx1.init({1, 0});
+    oclctx0.init({0, 1}); // ctx0 is created on {GPU0, GPU1}, GPU0 is the preferred device for memory placement
+    oclctx1.init({1, 0}); // ctx1 is created on {GPU1, GPU0}, GPU1 is the preferred device for memory placement
 
-    cl_mem clbuf0 = oclctx0.createBuffer2(0, elemCount * sizeof(uint32_t), initBuf);
-    cl_mem clbuf1 = oclctx0.createBuffer2(0, elemCount * sizeof(uint32_t), initBuf);
-    cl_mem clbuf2 = oclctx1.createBuffer2(1, elemCount * sizeof(uint32_t), initBuf);
-    cl_mem clbuf3 = oclctx1.createBuffer2(1, elemCount * sizeof(uint32_t), initBuf);
+    cl_mem clbuf0 = oclctx0.createBuffer2(0, elemCount * sizeof(uint32_t), initBuf); // buf0 is allocated on GPU0's local memory
+    cl_mem clbuf1 = oclctx0.createBuffer2(0, elemCount * sizeof(uint32_t), initBuf); // buf1 is allocated on GPU0's local memory
+    cl_mem clbuf2 = oclctx1.createBuffer2(1, elemCount * sizeof(uint32_t), initBuf); // buf2 is allocated on GPU1's local memory
+    cl_mem clbuf3 = oclctx1.createBuffer2(1, elemCount * sizeof(uint32_t), initBuf); // buf3 is allocated on GPU1's local memory
     oclctx0.printBuffer(clbuf0);
     oclctx1.printBuffer(clbuf2);
 
@@ -175,6 +177,7 @@ int ocl_p2p_multi_devie_ctx(int argc, char **argv)
     
     // use oclctx0 to launch a kernel on GPU0 to write data to remote buffer clbuf2 on GPU1
     oclctx0.runKernel(write_kernel_code, "write_to_remote", clbuf0, clbuf2_shared, elemCount, &event, nullptr, sync); // clbuf0 * 2 --> clbuf2
+
     // oclctx0.runKernel(write_kernel_code, "write_to_remote", clbuf0, clbuf1, elemCount, &event, nullptr, sync); // clbuf0 * 2 --> clbuf1
 
     // use oclctx0 to launch a kernel on GPU0 to read data from remote buffer clbuf2 on GPU1
@@ -196,9 +199,9 @@ int main(int argc, char **argv)
 
     //ocl_l0_interop_p2p();
 
-    //ocl_p2p_host_sync(argc, argv);
+    //ocl_p2p_sync_host_and_event(argc, argv);
 
-    ocl_p2p_multi_devie_ctx(argc, argv);
+    ocl_p2p_sync_multi_devie_ctx_event(argc, argv);
 
     return 0;
 }
